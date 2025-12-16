@@ -51,7 +51,7 @@ public class CompMst {
     @Column(name = "FAX_NO", length = 15)
     private String faxNo;
 
-    // 10. 회사 이미지 (로고/도장) 파일 저장하고 링크를 불러와서 읽는 방식
+    // 10. 회사 이미지 (로고/도장) 파일을 프로젝트 내에 저장하고 링크를 불러와서 읽는 방식
     @Column(name = "COMP_IMG", length = 255)
     private String compImg;
 }
