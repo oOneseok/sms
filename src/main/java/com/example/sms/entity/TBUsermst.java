@@ -8,7 +8,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Tb_usermst {
+public class TBUsermst {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
