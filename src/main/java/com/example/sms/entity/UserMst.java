@@ -3,6 +3,9 @@ package com.example.sms.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -10,7 +13,6 @@ import lombok.*;
 @Builder
 @Table(name = "TB_USERMST")
 public class UserMst {
-
     @Id
     @Column(name = "USER_ID", length = 10)
     private String userId;
@@ -20,4 +22,5 @@ public class UserMst {
 
     @Column(name = "PSWD", length = 20, nullable = false)
     private String pswd;
+
 }
