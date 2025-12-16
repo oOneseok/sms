@@ -49,4 +49,6 @@ public class MenuMst {
     private void setParent(MenuMst parent) {
         this.parent = parent;
     }
+
+    //이 엔티티 컨트롤러에서 리액트로 리턴하면 무한 루프에 빠지므로 DTO를 만들어서 필요한 데이터만 보내는 과정이 필요함
 }
