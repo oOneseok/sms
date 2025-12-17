@@ -26,5 +26,4 @@ public class UserMst {
     // 비밀번호
     @Column(name = "PSWD", length = 20, nullable = false)
     private String pswd;
-
 }
