@@ -23,10 +23,10 @@ public class Log {
     private LocalDate logCa;
 
     // 로그 대상 테이블명
-    @Column(name = "LOG_Table", length = 20)
+    @Column(name = "LOG_TABLE", length = 20)
     private String logTable;
 
     // 로그 관련 식별값/상품? (사진 컬럼명 그대로)
-    @Column(name = "LOG_Prod", length = 20)
+    @Column(name = "LOG_PROD", length = 20)
     private String logProd;
 }
