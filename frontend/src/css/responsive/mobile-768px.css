@@ -1,0 +1,165 @@
+/* 반응형 디자인 - 모바일 (768px 이하) */
+@media (max-width: 768px) {
+  .title-bar {
+    flex-wrap: nowrap;
+    min-height: auto;
+    padding: 4px 8px;
+    align-items: center;
+  }
+
+  .title-bar-left {
+    flex: 0 0 auto;
+    min-width: 0;
+    order: 1;
+  }
+
+  .title-bar-left .status-text {
+    display: none;
+  }
+
+  .nav-buttons {
+    left: 0;
+    gap: 1px;
+  }
+
+  .nav-btn {
+    width: 28px;
+    height: 24px;
+    font-size: 16px;
+  }
+
+  .app-title {
+    font-size: 11px;
+    position: static;
+    transform: none;
+    order: 2;
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    padding: 0 8px;
+  }
+
+  .title-bar-right {
+    order: 3;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .datetime-display {
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 4px;
+  }
+
+  .datetime-date,
+  .datetime-time {
+    font-size: 10px;
+  }
+
+  .menu-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    order: 999;
+    margin-top: auto;
+  }
+
+  .main-content-area {
+    order: 1;
+  }
+
+  .clicked-items-list {
+    order: 2;
+  }
+
+  .menu-tabs {
+    min-width: max-content;
+    padding: 0 4px;
+  }
+
+  .menu-tab {
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .toolbar {
+    overflow-x: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .toolbar-items {
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .toolbar-item {
+    width: calc(25% - 1px);
+    flex: 0 0 calc(25% - 1px);
+    min-height: 60px;
+    max-width: calc(25% - 1px);
+    box-sizing: border-box;
+  }
+
+  /* 각 줄의 마지막 항목(4의 배수)은 border-right 제거 */
+  .toolbar-item:nth-child(4n) {
+    border-right: none;
+  }
+
+  .toolbar-item .toolbar-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 24px;
+  }
+
+  .toolbar-item .toolbar-label {
+    font-size: 10px;
+  }
+
+  .clicked-items-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .clicked-items-tabs {
+    min-width: max-content;
+    padding: 4px 6px;
+  }
+
+  .clicked-item-tab {
+    padding: 3px 8px;
+    font-size: 9px;
+  }
+
+  .clicked-item-icon {
+    font-size: 10px;
+  }
+
+  .clicked-item-text {
+    font-size: 9px;
+  }
+
+  .clicked-item-close {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .login-dialog {
+    width: 90%;
+    max-width: 400px;
+  }
+
+  .login-dialog-content {
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .login-logo {
+    padding-left: 0;
+    padding-top: 15px;
+    border-left: none;
+    border-top: 1px solid #d0d0d0;
+  }
+}
+

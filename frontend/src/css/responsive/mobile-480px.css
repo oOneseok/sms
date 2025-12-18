@@ -1,0 +1,42 @@
+/* 작은 모바일 화면 (480px 이하) */
+@media (max-width: 480px) {
+  .title-bar-left .status-text {
+    display: none; /* 작은 화면에서는 status-text 숨김 */
+  }
+
+  .app-title {
+    font-size: 10px;
+  }
+
+  .nav-btn {
+    width: 26px;
+    height: 22px;
+    font-size: 14px;
+  }
+
+  .menu-tab {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .toolbar-item {
+    width: 100px;
+    flex: 0 0 100px;
+  }
+
+  .toolbar-item .toolbar-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+  }
+
+  .toolbar-item .toolbar-label {
+    font-size: 9px;
+  }
+
+  .datetime-date,
+  .datetime-time {
+    font-size: 9px;
+  }
+}
+
