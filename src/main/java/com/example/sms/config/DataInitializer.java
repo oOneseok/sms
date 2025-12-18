@@ -90,7 +90,6 @@ public class DataInitializer implements CommandLineRunner {
                 .menuIcon(icon)
                 .parent(parent) // 부모 객체를 직접 넣어줌 (Foreign Key 설정됨)
                 .build();
-
         menuRepository.save(menu);
         System.out.println("✅ 메뉴 DB 등록: " + menuNm + " (" + menuId + ")");
     }
