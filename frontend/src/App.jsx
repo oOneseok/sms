@@ -28,6 +28,7 @@ import 반품관리 from './pages/반품관리.jsx'
 import 입고관리 from './pages/입고관리.jsx'
 import 생산계획 from './pages/생산계획.jsx'
 import 생산실적관리 from './pages/생산실적관리.jsx'
+import 시스템로그 from './pages/시스템로그.jsx'
 
 function App() {
   const navigate = useNavigate()
@@ -243,6 +244,9 @@ function App() {
               {/* 생산관리 */}
               <Route path="/생산관리/생산계획" element={<생산계획 />} />
               <Route path="/생산관리/생산실적관리" element={<생산실적관리 />} />
+
+              {/* 시스템관리 */}
+              <Route path="/시스템관리/시스템로그" element={<시스템로그 />} />
             </Routes>
           </div>
         </div>

@@ -46,6 +46,8 @@ public class DataInitializer implements CommandLineRunner {
         createMenu("M20", "구매/영업관리", 2, null, null);
         createMenu("M30", "자재관리", 3, null, null);
         createMenu("M40", "생산관리", 4, null, null);
+        createMenu("M90", "시스템관리", 9, null, null);
+
 
         // [2단계] 자식 메뉴 생성 (부모 ID 연결)
         // 기준정보관리 (M10) 하위
@@ -67,6 +69,9 @@ public class DataInitializer implements CommandLineRunner {
         // 생산관리 (M40) 하위
         createMenu("M4001", "생산 계획", 1, "📊", "M40");
         createMenu("M4002", "생산 실적 관리", 2, "✅", "M40");
+
+        // 시스템 관리 (M90) 하위
+        createMenu("M9001","시스템 로그",1,"📜","M90");
     }
 
     // 메뉴 생성 헬퍼 메서드

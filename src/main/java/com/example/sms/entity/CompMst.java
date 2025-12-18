@@ -1,13 +1,10 @@
 package com.example.sms.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter
+@Getter @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -43,6 +40,10 @@ public class CompMst {
     @Column(name = "ADDR", length = 200)
     private String addr;
 
+    // 7.1 상세주소
+    @Column(name = "ADDR_DETAIL", length = 200)
+    private String addrDetail;
+
     // 8. 전화번호
     @Column(name = "TEL_NO", length = 15)
     private String telNo;
@@ -51,7 +52,7 @@ public class CompMst {
     @Column(name = "FAX_NO", length = 15)
     private String faxNo;
 
-    // 10. 회사 이미지 (로고/도장) 파일을 프로젝트 내에 저장하고 링크를 불러와서 읽는 방식
-    @Column(name = "COMP_IMG", length = 255)
+    @Lob
+    @Column(name = "COMP_IMG", columnDefinition = "CLOB")
     private String compImg;
 }
