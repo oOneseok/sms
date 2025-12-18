@@ -27,6 +27,10 @@ public class MenuMst {
     @Column(name = "SEQ_NO")
     private Integer seqNo;
 
+    // 아이콘 정보
+    @Column(name = "MENU_ICON")
+    private String menuIcon;
+
     // 4. 부모 메뉴 (내 상위 메뉴는 하나다)
     // DB의 'PARENT_ID' 컬럼이 내 부모의 'MENU_ID'를 가리킴
     @ManyToOne(fetch = FetchType.LAZY)
