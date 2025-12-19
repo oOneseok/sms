@@ -37,6 +37,7 @@ public class WhMstService {
         WhMst e = WhMst.builder()
                 .whCd(dto.getWhCd())
                 .whNm(dto.getWhNm())
+                .remark(dto.getRemark())
                 .whType1(dto.getWhType1())
                 .whType2(dto.getWhType2())
                 .useFlag(dto.getUseFlag())
@@ -50,10 +51,11 @@ public class WhMstService {
         WhMst old = whMstRepository.findById(whCd)
                 .orElseThrow(() -> new IllegalArgumentException("WH_CD not found: " + whCd));
 
-        // WhMst에 setter가 없다는 가정 → 같은 PK로 새 엔티티 만들어 save(merge)
+        // setter 없이 merge(save) 방식
         WhMst updated = WhMst.builder()
                 .whCd(old.getWhCd())
                 .whNm(dto.getWhNm())
+                .remark(dto.getRemark())
                 .whType1(dto.getWhType1())
                 .whType2(dto.getWhType2())
                 .useFlag(dto.getUseFlag())

@@ -11,6 +11,8 @@ public class WhMstResponseDto {
 
     private String whCd;
     private String whNm;
+
+    private String remark;
     private String whType1;
     private String whType2;
     private String useFlag;
@@ -19,6 +21,7 @@ public class WhMstResponseDto {
         return WhMstResponseDto.builder()
                 .whCd(e.getWhCd())
                 .whNm(e.getWhNm())
+                .remark(e.getRemark())
                 .whType1(e.getWhType1())
                 .whType2(e.getWhType2())
                 .useFlag(e.getUseFlag())

@@ -20,6 +20,10 @@ public class WhMst {
     @Column(name = "WH_NM", length = 50, nullable = false)
     private String whNm;
 
+    // 설명(비고)
+    @Column(name = "REMARK", length = 100)
+    private String remark;
+
     // 창고유형1
     @Column(name = "WH_TYPE1", length = 1)
     private String whType1;
