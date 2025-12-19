@@ -15,7 +15,6 @@ public class CompController {
 
     private final CompRepository compRepository;
     private final LogService logService;
-    // 메뉴 이름 상수로 정의 (유지보수 편의)
     private static final String MENU_NAME = "사업장 관리";
 
     // 1. 목록 조회
