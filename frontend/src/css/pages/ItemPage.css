@@ -1,0 +1,89 @@
+.item-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background-color: #fff;
+    box-sizing: border-box;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* 탭 버튼 영역 */
+.tab-header {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 0; /* 테이블과 딱 붙이기 위해 */
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    background-color: #e9ecef;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-weight: bold;
+    color: #495057;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background-color: #4dabf7; /* 활성 탭 색상 (파랑) */
+    color: white;
+    border-color: #4dabf7;
+}
+
+/* 검색바 */
+.item-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+/* 컨텐츠 영역 (리스트 + 상세) */
+.item-content {
+    display: flex;
+    flex: 1;
+    gap: 20px;
+    overflow: hidden;
+}
+
+.item-list-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.item-detail-area {
+    width: 500px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 20px;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+/* 공통 테이블 스타일 (ProcessPage와 유사) */
+.list-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.list-table th, .list-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-table th { background: #f1f3f5; position: sticky; top: 0; font-weight: 600; }
+.list-table tbody tr:hover { background: #f8f9fa; cursor: pointer; }
+.list-table tbody tr.active { background: #e7f5ff; }
+
+/* 폼 스타일 */
+.detail-form-row { margin-bottom: 15px; display: flex; align-items: center; }
+.form-label { width: 100px; font-weight: 600; color: #555; font-size: 14px; }
+.form-input-group { flex: 1; display: flex; gap: 10px; }
+.form-input { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; }

@@ -31,11 +31,9 @@ function LoginDialog({ showLogin, setShowLogin, saveId, setSaveId, autoLogin, se
       const data = await response.json();
 
       if (response.ok) {
-        // 성공 시
-        // alert(`${data.userNm}님 환영합니다!`); 
-        setShowLogin(false); // 다이얼로그 닫기
-        
-        // (선택) 여기서 받은 사용자 정보를 App.js나 전역 상태로 저장하는 로직이 추가될 수 있음
+        localStorage.setItem("isLoggedIn", "true"); 
+        localStorage.setItem("userInfo", JSON.stringify(data));
+        setShowLogin(false);
       } else {
         // 실패 시 (비밀번호 틀림 등)
         alert(data.message || '로그인에 실패했습니다.');
