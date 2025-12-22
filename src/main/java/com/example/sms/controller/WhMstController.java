@@ -1,52 +1,68 @@
 package com.example.sms.controller;
 
-import com.example.sms.dto.WhMstRequestDto;
-import com.example.sms.dto.WhMstResponseDto;
-import com.example.sms.service.WhMstService;
-import jakarta.validation.Valid;
+import com.example.sms.entity.WhMst;
+import com.example.sms.repository.WhMstRepository;
+import com.example.sms.service.LogService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/whs")
+@RequiredArgsConstructor
 public class WhMstController {
 
-    private final WhMstService whMstService;
+    private final WhMstRepository whMstRepository;
+    private final LogService logService;
 
-    // 목록 + 검색 + 페이징
-    // 예: GET /api/whs?keyword=자재&useFlag=Y&whType1=1&page=0&size=20&sort=whCd,asc
+    private static final String MENU_NAME = "창고 관리";
+
+    // 1. 목록 조회 (검색 기능 포함)
     @GetMapping
-    public Page<WhMstResponseDto> list(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String useFlag,
-            @RequestParam(required = false) String whType1,
-            @RequestParam(required = false) String whType2,
-            Pageable pageable
+    public ResponseEntity<List<WhMst>> getList(
+            @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return whMstService.search(keyword, useFlag, whType1, whType2, pageable);
+        // 검색어가 없으면 전체, 있으면 검색 (Repository 메소드 사용)
+        if (keyword.isBlank()) {
+            return ResponseEntity.ok(whMstRepository.findAll());
+        } else {
+            return ResponseEntity.ok(whMstRepository.findByWhNmContainingOrWhCdContaining(keyword, keyword));
+        }
     }
 
-    @GetMapping("/{whCd}")
-    public WhMstResponseDto detail(@PathVariable String whCd) {
-        return whMstService.findOne(whCd);
-    }
-
+    // 2. 저장 (신규/수정)
     @PostMapping
-    public WhMstResponseDto create(@Valid @RequestBody WhMstRequestDto dto) {
-        return whMstService.create(dto);
+    public ResponseEntity<WhMst> save(@RequestBody WhMst whMst) {
+        if (whMst.getWhCd() == null || whMst.getWhCd().isBlank()) {
+            throw new IllegalArgumentException("창고코드는 필수입니다.");
+        }
+
+        // 신규 여부 확인
+        boolean exists = whMstRepository.existsById(whMst.getWhCd());
+        String actionType = exists ? "수정" : "등록";
+
+        // 저장
+        WhMst saved = whMstRepository.save(whMst);
+
+        // 로그 기록
+        logService.saveLog(MENU_NAME, actionType, saved.getWhCd(), saved.getWhNm());
+
+        return ResponseEntity.ok(saved);
     }
 
-    @PutMapping("/{whCd}")
-    public WhMstResponseDto update(@PathVariable String whCd,
-                                   @Valid @RequestBody WhMstRequestDto dto) {
-        return whMstService.update(whCd, dto);
-    }
-
+    // 3. 삭제
     @DeleteMapping("/{whCd}")
-    public void delete(@PathVariable String whCd) {
-        whMstService.delete(whCd);
+    public ResponseEntity<Void> delete(@PathVariable String whCd) {
+        WhMst target = whMstRepository.findById(whCd)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 창고입니다."));
+
+        whMstRepository.delete(target);
+
+        // 로그 기록
+        logService.saveLog(MENU_NAME, "삭제", target.getWhCd(), target.getWhNm());
+
+        return ResponseEntity.ok().build();
     }
 }

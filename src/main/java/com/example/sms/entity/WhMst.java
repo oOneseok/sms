@@ -4,35 +4,26 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter
+@Getter @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 @Table(name = "TB_WHMST")
 public class WhMst {
-
-    // 창고코드
     @Id
     @Column(name = "WH_CD", length = 10)
     private String whCd;
 
-    // 창고명
-    @Column(name = "WH_NM", length = 50, nullable = false)
+    @Column(name = "WH_NM", length = 50)
     private String whNm;
 
-    // 설명(비고)
+    // 변경됨: 3개 컬럼 -> 1개 컬럼 (01:자재, 02:제품, 03:혼합, 04:반품)
+    @Column(name = "WH_TYPE", length = 2)
+    private String whType;
+
+    @Column(name = "USE_FLAG", length = 1)
+    private String useFlag; // Y, N
+
     @Column(name = "REMARK", length = 100)
     private String remark;
-
-    // 창고유형1
-    @Column(name = "WH_TYPE1", length = 1)
-    private String whType1;
-
-    // 창고유형2
-    @Column(name = "WH_TYPE2", length = 1)
-    private String whType2;
-
-    // 사용여부
-    @Column(name = "USE_FLAG", length = 1)
-    private String useFlag;
 }

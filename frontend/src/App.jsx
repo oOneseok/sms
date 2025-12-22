@@ -29,6 +29,7 @@
   import 생산계획 from './pages/생산계획.jsx'
   import 생산실적관리 from './pages/생산실적관리.jsx'
   import 시스템로그 from './pages/시스템로그.jsx'
+  import BOM관리 from './pages/BOM관리.jsx'
 
   function App() {
     const navigate = useNavigate()
@@ -228,6 +229,7 @@
                 <Route path="/기준정보관리/품목관리" element={<품목관리 />} />
                 <Route path="/기준정보관리/공정관리" element={<공정관리 />} />
                 <Route path="/기준정보관리/창고관리" element={<창고관리 />} />
+                <Route path="/기준정보관리/BOM관리" element={<BOM관리 />} />
                 
                 {/* 구매/영업관리 */}
                 <Route path="/구매영업관리/발주관리" element={<발주관리 />} />
