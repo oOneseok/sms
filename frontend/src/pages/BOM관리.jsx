@@ -34,12 +34,18 @@ export default function BomPage() {
 
   const fetchItems = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/item');
-      if (res.ok) {
-        const data = await res.json();
-        // 제품(02)과 자재(01) 분리
-        setProducts(data.filter(item => item.itemFlag === '02'));
-        setMaterials(data.filter(item => item.itemFlag === '01'));
+      // 1. 아이템 목록 조회
+      const resItem = await fetch('http://localhost:8080/api/item');
+      // 2. 분류 목록 조회 (어떤 게 소분류인지 알기 위해)
+      const resType = await fetch('http://localhost:8080/api/item-types/all'); // 전체 플랫 리스트 필요 (혹은 트리 순회)
+      // *편의상 백엔드에서 typeLv 정보를 itemMst에 포함해서 주면 제일 좋음*
+      
+      if (resItem.ok) {
+        const items = await resItem.json();
+        
+        // 제품(02)
+        setProducts(items.filter(item => item.itemFlag === '02'));
+        setMaterials(items.filter(item => item.itemFlag === '01' && item.typeCd)); 
       }
     } catch (err) { console.error(err); }
   };

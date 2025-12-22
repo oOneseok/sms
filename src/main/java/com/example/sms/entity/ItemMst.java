@@ -39,4 +39,7 @@ public class ItemMst {
     @Column(name = "REMARK")
     private String remark;
 
+    // [추가] 분류 코드 연결
+    @Column(name = "TYPE_CD")
+    private String typeCd;
 }

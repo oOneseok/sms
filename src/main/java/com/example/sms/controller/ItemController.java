@@ -1,8 +1,10 @@
 package com.example.sms.controller;
 
 import com.example.sms.entity.ItemMst;
+import com.example.sms.repository.BomRepository;
 import com.example.sms.repository.ItemRepository;
 import com.example.sms.service.LogService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +17,7 @@ public class ItemController {
 
     private final ItemRepository itemRepository;
     private final LogService logService;
+    private final BomRepository bomRepository;
     private static final String MENU_NAME = "품목 관리";
 
     // 1. 조회
@@ -43,6 +46,7 @@ public class ItemController {
     }
 
     // 3. 삭제
+    @Transactional
     @DeleteMapping("/{itemCd}")
     public void deleteItem(@PathVariable String itemCd) {
         // A. 삭제 전에 이름을 알아내야 로그에 남길 수 있음! (DB에서 조회 먼저 수행)
@@ -51,6 +55,7 @@ public class ItemController {
         String targetName = target.getItemNm();
 
         // B. 삭제 수행
+        bomRepository.deleteByItemCd(itemCd);
         itemRepository.delete(target);
         // C. 로그 저장 (삭제된 아이템의 이름을 같이 넘겨줌)
         logService.saveLog(MENU_NAME, "삭제", itemCd, targetName);
