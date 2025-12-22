@@ -1,0 +1,197 @@
+/* src/css/pages/BomPage.css */
+
+/* 전체 컨테이너: 화면 전체 높이를 꽉 채우고 스크롤 방지 */
+.bom-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* 부모 요소(메인 레이아웃) 높이에 맞춤 */
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  background-color: #f5f5f5;
+  gap: 10px;
+  overflow: hidden; /* 전체 화면 스크롤 없애기 */
+}
+
+/* 1. 헤더 영역 */
+.bom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 15px;
+  background: white;
+  border: 1px solid #ccc;
+  height: 50px; /* 높이 고정 */
+  flex-shrink: 0; /* 줄어들지 않음 */
+}
+
+.bom-title {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* 검색바 (React 코드에 inline style로 있던 부분 클래스로 뺌) */
+.bom-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  flex-shrink: 0;
+}
+
+/* 2. 메인 콘텐츠 영역 (상단) */
+.bom-main-layout {
+  display: flex;
+  flex: 1.5; /* 하단보다 1.5배 더 크게 */
+  gap: 10px;
+  min-height: 0; /* 중요: 내부 스크롤을 위해 최소 높이 0 */
+}
+
+/* [좌측] 제품/자재 리스트 패널 */
+.bom-left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 300px;
+  height: 100%; /* 부모 높이 꽉 채움 */
+}
+
+.panel-box {
+  background: white;
+  border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* 상하 50:50 */
+  min-height: 0; /* 내부 스크롤 필수 */
+}
+
+.panel-header {
+  background: #e9ecef;
+  padding: 8px;
+  font-weight: bold;
+  font-size: 13px;
+  border-bottom: 1px solid #ccc;
+  flex-shrink: 0;
+}
+
+/* 테이블 스크롤 영역 */
+.table-scroll-area {
+  flex: 1;
+  overflow: auto; /* 내용 많으면 스크롤 */
+}
+
+/* [중앙] 트리 뷰 패널 */
+.bom-center-panel {
+  flex: 0.8;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  overflow-y: auto;
+  min-width: 200px;
+}
+
+/* 트리 스타일 */
+.bom-tree-root {
+  font-weight: bold;
+  color: #007bff;
+  margin-bottom: 10px;
+}
+.bom-tree-node {
+  margin-left: 20px;
+  padding: 4px 0;
+  border-left: 1px dashed #ccc;
+  padding-left: 10px;
+  position: relative;
+}
+.bom-tree-node::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 0;
+  width: 8px;
+  border-top: 1px dashed #ccc;
+}
+
+/* [우측] 입력 폼 패널 */
+.bom-right-panel {
+  flex: 1.2;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+/* 폼 스타일 */
+.bom-form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px; /* 간격 조금 줄임 */
+}
+.bom-label {
+  width: 90px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  margin-right: 10px;
+}
+.bom-input {
+  flex: 1;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.bom-input-short {
+  width: 60px;
+  flex: none;
+}
+
+/* 3. 하단 상세 리스트 영역 */
+.bom-bottom-panel {
+  flex: 1; /* 상단보다 작게 */
+  background: white;
+  border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* 내부 스크롤 필수 */
+}
+
+/* 테이블 공통 */
+.bom-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.bom-table th {
+  background: #f1f3f5;
+  position: sticky;
+  top: 0;
+  padding: 6px;
+  border: 1px solid #ddd;
+  text-align: center;
+  z-index: 1;
+}
+.bom-table td {
+  padding: 5px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+.bom-table tr:hover { background: #f8f9fa; }
+.bom-table tr.selected { background: #e7f5ff; }
+
+/* 버튼 스타일 */
+.bom-btn {
+  padding: 5px 12px;
+  margin-left: 5px;
+  border: 1px solid #aaa;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.btn-save { background: #d4edda; border-color: #c3e6cb; }
+.btn-cancel { background: #f8f9fa; border-color: #ddd; }
+.btn-new { background: #cce5ff; border-color: #b8daff; }
+.btn-delete { background: #f8d7da; border-color: #f5c6cb; }

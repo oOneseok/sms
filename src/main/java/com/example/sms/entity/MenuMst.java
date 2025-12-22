@@ -31,6 +31,9 @@ public class MenuMst {
     @Column(name = "MENU_ICON")
     private String menuIcon;
 
+    @Column(name = "MENU_URL")
+    private String menuUrl;
+
     // 4. 부모 메뉴 (내 상위 메뉴는 하나다)
     // DB의 'PARENT_ID' 컬럼이 내 부모의 'MENU_ID'를 가리킴
     @ManyToOne(fetch = FetchType.LAZY)

@@ -12,21 +12,11 @@ export default function 거래처관리() {
 
   // 폼 데이터 (Entity 필드와 일치)
   const [formData, setFormData] = useState({
-    custCd: '',
-    custNm: '',
-    presidentNm: '', // 대표자명
-    bizNo: '',       // 사업자번호
-    bizCond: '',     // 업태
-    bizItem: '',     // 종목
-    bizAddr: '',     // 주소
-    bizTel: '',      // 전화번호
-    bizFax: '',      // 팩스
-    empNm: '',       // 담당자명
-    empEMail: '',    // 담당자 이메일
-    empTel: '',      // 담당자 직통번호
-    empHp: '',       // 담당자 핸드폰
-    bizFlag: '02'    // 구분 (초기값 고객사)
-  });
+    custCd: '', custNm: '', presidentNm: '', bizNo: '', bizCond: '', bizItem: '',
+    bizAddr: '', bizTel: '', bizFax: '', 
+    empCd: '', empNm: '', empEmail: '', empTel: '', empHp: '', // empCd 추가
+    bizFlag: '02'
+});
 
   const [isEditMode, setIsEditMode] = useState(false); // 수정 모드 여부
 
@@ -114,8 +104,8 @@ export default function 거래처관리() {
 
       if (res.ok) {
         alert("저장되었습니다.");
-        fetchList(searchText); // 리스트 갱신
-        setIsEditMode(true);   // 저장 후엔 수정 모드
+        fetchList(searchText); 
+        setIsEditMode(true);
       } else {
         alert("저장 실패: 코드가 중복되었거나 서버 오류입니다.");
       }
@@ -292,12 +282,10 @@ export default function 거래처관리() {
             <div style={{marginBottom:'10px'}}>
                 <div style={{fontSize:'14px', fontWeight:'bold', color:'#4dabf7', marginBottom:'10px'}}>👤 담당자 정보</div>
                 
-                <div className="detail-form-row">
-                    <div className="form-label">담당자명</div>
-                    <div className="form-input-group">
-                        <input type="text" className="form-input" name="empNm" value={formData.empNm || ''} onChange={handleChange} />
-                    </div>
-                </div>
+                <div className="detail-row">
+                    <div className="detail-field"><label>담당자코드</label><input className="detail-input" name="empCd" value={formData.empCd || ''} onChange={handleChange} /></div>
+                    <div className="detail-field"><label>담당자명</label><input className="detail-input" name="empNm" value={formData.empNm || ''} onChange={handleChange} /></div>
+                </div>  
                 <div className="detail-form-row">
                     <div className="form-label">이메일</div>
                     <div className="form-input-group">

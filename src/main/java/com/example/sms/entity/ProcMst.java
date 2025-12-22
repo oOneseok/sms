@@ -12,25 +12,19 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "TB_PROCMST")
 public class ProcMst {
-
-    // 공정 코드 (PK)
     @Id
     @Column(name = "PROC_CD", length = 10)
     private String procCd;
 
-    // 공정명
-    @Column(name = "PROC_NM", length = 50)
+    @Column(name = "PROC_NM")
     private String procNm;
 
-    // 공정 담당자
-    @Column(name = "PROC_EMP", length = 20)
+    @Column(name = "PROC_EMP")
     private String procEmp;
 
-    // 사용 여부 (Y/N)
     @Column(name = "USE_FLAG", length = 1)
-    private String useFlag;
+    private String useFlag; // Y/N
 
-    // 비고 (설명)
-    @Column(name = "REMARK", length = 100)
+    @Column(name = "REMARK")
     private String remark;
 }

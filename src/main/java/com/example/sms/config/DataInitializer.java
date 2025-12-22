@@ -41,41 +41,45 @@ public class DataInitializer implements CommandLineRunner {
 
     // === 2. 메뉴 데이터 생성 로직 ===
     private void initMenus() {
-        // [1단계] 부모 메뉴(최상위 탭) 먼저 생성
-        createMenu("M10", "기준정보관리", 1, null, null);
-        createMenu("M20", "구매/영업관리", 2, null, null);
-        createMenu("M30", "자재관리", 3, null, null);
-        createMenu("M40", "생산관리", 4, null, null);
-        createMenu("M90", "시스템관리", 9, null, null);
-
+        // [1단계] 부모 메뉴(최상위 탭) 생성
+        // (URL은 폴더명이나 대표 경로로 설정, 실제 이동은 하지 않음)
+        createMenu("M10", "기준정보관리", 1, null, null, "/standard");
+        createMenu("M20", "구매/영업관리", 2, null, null, "/sales");
+        createMenu("M30", "자재관리", 3, null, null, "/material");
+        createMenu("M40", "생산관리", 4, null, null, "/production");
+        createMenu("M90", "시스템관리", 9, null, null, "/system");
 
         // [2단계] 자식 메뉴 생성 (부모 ID 연결)
-        // 기준정보관리 (M10) 하위
-        createMenu("M1001", "사업장 관리", 1, "📦", "M10");
-        createMenu("M1002", "거래처 관리", 2, "📋", "M10");
-        createMenu("M1003", "품목 관리", 3, "📝", "M10");
-        createMenu("M1004", "공정 관리", 4, "⚙️", "M10");
-        createMenu("M1005", "창고 관리", 5, "🏭", "M10");
 
-        // 구매/영업관리 (M20) 하위
-        createMenu("M2001", "발주 관리", 1, "📄", "M20");
-        createMenu("M2002", "주문 관리", 2, "📦", "M20");
-        createMenu("M2003", "출고 관리", 3, "🚚", "M20");
-        createMenu("M2004", "반품 관리", 4, "↩️", "M20");
+        // 1. 기준정보관리 (M10) 하위
+        createMenu("M1001", "사업장 관리", 1, "📦", "M10", "/standard/business");
+        createMenu("M1002", "거래처 관리", 2, "📋", "M10", "/standard/partner");
+        createMenu("M1003", "품목 관리", 3, "📝", "M10", "/standard/item");
+        createMenu("M1004", "공정 관리", 4, "⚙️", "M10", "/standard/process");
+        createMenu("M1005", "창고 관리", 5, "🏭", "M10", "/standard/warehouse");
+        createMenu("M1006", "BOM 관리", 6, "🧬", "M10", "/standard/bom");
 
-        // 자재관리 (M30) 하위
-        createMenu("M3001", "입고 관리", 1, "📥", "M30");
+        // 2. 구매/영업관리 (M20) 하위
+        createMenu("M2001", "발주 관리", 1, "📄", "M20", "/sales/purchase");
+        createMenu("M2002", "주문 관리", 2, "🛒", "M20", "/sales/order");
 
-        // 생산관리 (M40) 하위
-        createMenu("M4001", "생산 계획", 1, "📊", "M40");
-        createMenu("M4002", "생산 실적 관리", 2, "✅", "M40");
+        // 3. 자재관리 (M30) 하위
+        createMenu("M3001", "입고 관리", 1, "📥", "M30", "/material/inbound");
+        createMenu("M3002", "재고 관리", 2, "📦", "M30", "/material/stock");
+        createMenu("M3003", "출고 관리", 3, "📤", "M30", "/material/outbound");
+        createMenu("M3004", "입출고 이력", 4, "📜", "M30", "/material/history");
 
-        // 시스템 관리 (M90) 하위
-        createMenu("M9001","시스템 로그",1,"📜","M90");
+        // 4. 생산관리 (M40) 하위
+        createMenu("M4001", "생산 계획", 1, "📅", "M40", "/production/plan");
+        createMenu("M4002", "생산 실적", 2, "🏭", "M40", "/production/result");
+        createMenu("M4003", "자재 소요량(MRP)", 3, "📊", "M40", "/production/mrp");
+
+        // 5. 시스템 관리 (M90) 하위
+        createMenu("M9001", "시스템 로그", 1, "💻", "M90", "/system/log");
     }
 
-    // 메뉴 생성 헬퍼 메서드
-    private void createMenu(String menuId, String menuNm, int seqNo, String icon, String parentId) {
+    // 메뉴 생성 헬퍼 메서드 (URL 파라미터 추가됨)
+    private void createMenu(String menuId, String menuNm, int seqNo, String icon, String parentId, String url) {
         // 이미 존재하면 건너뜀 (중복 방지)
         if (menuRepository.existsById(menuId)) {
             return;
@@ -87,13 +91,14 @@ public class DataInitializer implements CommandLineRunner {
             parent = menuRepository.findById(parentId).orElse(null);
         }
 
-        // 엔티티 빌더 사용 (제공해주신 엔티티 구조에 맞춤)
+        // 엔티티 빌더 사용
         MenuMst menu = MenuMst.builder()
                 .menuId(menuId)
                 .menuNm(menuNm)
                 .seqNo(seqNo)
                 .menuIcon(icon)
-                .parent(parent) // 부모 객체를 직접 넣어줌 (Foreign Key 설정됨)
+                .menuUrl(url) // 엔티티에 url 필드가 있다고 가정 (MenuMst 수정 필요 시 확인)
+                .parent(parent)
                 .build();
 
         menuRepository.save(menu);
