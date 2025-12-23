@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { callApi } from '../utils/api'; // 🔥 fetch 대신 사용할 API 함수 임포트
 import '../css/pages/ItemPage.css'; 
 import '../css/pages/BomPage.css';
 
@@ -89,6 +90,7 @@ export default function 품목관리() {
   // === API 호출 ===
   const fetchList = async () => {
     try {
+        // 조회는 callApi 써도 되고 fetch 써도 됨 (보통 조회 로그는 안 남기므로 fetch 유지해도 무방)
         const res = await fetch('http://localhost:8080/api/item');
         if (res.ok) setItemList(await res.json());
     } catch (e) { console.error(e); }
@@ -117,23 +119,25 @@ export default function 품목관리() {
       if (row.type === 'FOLDER') {
           if (!window.confirm(`[${row.typeNm}] 분류를 삭제하시겠습니까?\n(하위 분류 및 자재가 모두 삭제됩니다)`)) return;
           try {
-              const res = await fetch(`http://localhost:8080/api/item-types/${row.typeCd}`, { method: 'DELETE' });
-              if (res.ok) { 
-                  alert("분류 삭제 완료"); 
-                  fetchTypeTree(); 
-                  fetchList(); 
-                  if(currentFolder?.typeCd === row.typeCd) setCurrentFolder(null); 
-              }
+              // 🔥 [수정] fetch -> callApi (로그에 ID 남기기 위해)
+              await callApi(`http://localhost:8080/api/item-types/${row.typeCd}`, 'DELETE');
+              
+              alert("분류 삭제 완료"); 
+              fetchTypeTree(); 
+              fetchList(); 
+              if(currentFolder?.typeCd === row.typeCd) setCurrentFolder(null); 
+              
           } catch (e) { console.error(e); }
       } else {
           if (!window.confirm(`[${row.itemNm}] 삭제하시겠습니까?`)) return;
           try {
-              const res = await fetch(`http://localhost:8080/api/item/${row.itemCd}`, { method: 'DELETE' });
-              if (res.ok) { 
-                  alert("삭제 완료"); 
-                  fetchList(); 
-                  if(formData.itemCd === row.itemCd) handleNew(); 
-              }
+              // 🔥 [수정] fetch -> callApi
+              await callApi(`http://localhost:8080/api/item/${row.itemCd}`, 'DELETE');
+              
+              alert("삭제 완료"); 
+              fetchList(); 
+              if(formData.itemCd === row.itemCd) handleNew(); 
+              
           } catch (e) { console.error(e); }
       }
   };
@@ -166,23 +170,27 @@ export default function 품목관리() {
       setModalMode(mode); setNewTypeData({ code: '', name: '' }); setIsModalOpen(true);
   };
   const closeCategoryModal = () => setIsModalOpen(false);
+  
   const handleSaveCategory = async () => { 
       if(!newTypeData.code || !newTypeData.name) return alert("입력 확인");
       const isLarge = modalMode === 'LARGE';
       const lv = isLarge ? '01' : '02';
       const parentCd = isLarge ? null : selLarge;
       try {
-          const res = await fetch('http://localhost:8080/api/item-types', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ typeCd: newTypeData.code, typeNm: newTypeData.name, typeLv: lv, parentType: parentCd })
+          // 🔥 [수정] fetch -> callApi
+          await callApi('http://localhost:8080/api/item-types', 'POST', { 
+              typeCd: newTypeData.code, 
+              typeNm: newTypeData.name, 
+              typeLv: lv, 
+              parentType: parentCd 
           });
-          if (res.ok) {
-              alert("생성됨"); fetchTypeTree(); 
-              if (isLarge) { setSelLarge(newTypeData.code); setFormData(p=>({...p, typeCd:newTypeData.code})); }
-              else { setSelMedium(newTypeData.code); setFormData(p=>({...p, typeCd:newTypeData.code})); }
-              closeCategoryModal();
-          }
-      } catch(e){}
+
+          alert("생성됨"); fetchTypeTree(); 
+          if (isLarge) { setSelLarge(newTypeData.code); setFormData(p=>({...p, typeCd:newTypeData.code})); }
+          else { setSelMedium(newTypeData.code); setFormData(p=>({...p, typeCd:newTypeData.code})); }
+          closeCategoryModal();
+          
+      } catch(e){ console.error(e); alert("저장 실패 (중복 코드 등)"); }
   };
 
   // === 우측 폼 핸들러 ===
@@ -207,18 +215,18 @@ export default function 품목관리() {
   const handleMediumChange = (e) => { const v=e.target.value; setSelMedium(v); setFormData(p=>({...p, typeCd:v?v:selLarge})); };
   
   const handleSave = async () => { 
-      if (!formData.itemCd || !formData.itemNm) return alert("필수값 누락");
-      if (activeTab === '01' && !formData.typeCd) return alert("분류(대분류)는 필수입니다.");
-
-      const payload = { ...formData, itemFlag: activeTab };
+      if (!formData.itemCd) return alert("필수값 누락");
 
       try {
-        const res = await fetch('http://localhost:8080/api/item', { 
-            method: 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
-        });
-        if(res.ok) { alert("저장되었습니다."); fetchList(); }
-        else { alert("저장 실패"); }
-      } catch(e) { console.error(e); }
+        // 이미 잘 되어 있음 (callApi 사용)
+        await callApi('http://localhost:8080/api/item', 'POST', { ...formData, itemFlag: activeTab });
+        
+        alert("저장되었습니다."); 
+        fetchList();
+      } catch(e) { 
+        console.error(e);
+        alert("저장 실패");
+      }
   };
 
   // 우측 상단 삭제 (현재 폼 보고있는거)
@@ -226,8 +234,10 @@ export default function 품목관리() {
       if(!isEditMode) return;
       if(!window.confirm("정말 삭제하시겠습니까?")) return;
       try {
-        const res = await fetch(`http://localhost:8080/api/item/${formData.itemCd}`, { method: 'DELETE' });
-        if(res.ok) { alert("삭제되었습니다."); fetchList(); handleNew(); }
+        // 🔥 [수정] fetch -> callApi
+        await callApi(`http://localhost:8080/api/item/${formData.itemCd}`, 'DELETE');
+        
+        alert("삭제되었습니다."); fetchList(); handleNew();
       } catch(e) { console.error(e); }
   };
 
@@ -257,6 +267,7 @@ export default function 품목관리() {
         <div>
             <button className="bom-btn btn-new" onClick={handleNew}>신규</button>
             <button className="bom-btn btn-save" onClick={handleSave}>저장</button>
+            {/* 🔥 여기서 에러가 났었음. 이제 handleFormDelete가 정확히 연결됨 */}
             <button className="bom-btn btn-delete" onClick={handleFormDelete}>삭제</button>
         </div>
       </div>
@@ -324,7 +335,7 @@ export default function 품목관리() {
                                             {row.type === 'ITEM' ? (row.itemCost||0).toLocaleString() : '-'}
                                         </td>
                                         
-                                        {/* 🔥 [수정됨] 깔끔한 아이콘 버튼 */}
+                                        {/* 삭제 버튼 */}
                                         <td className="col-delete" onClick={(e) => e.stopPropagation()}>
                                             <button 
                                                 className="btn-icon-delete" 

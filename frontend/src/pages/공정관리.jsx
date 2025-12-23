@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { callApi } from '../utils/api'; // 🔥 API 함수 import
 import '../css/pages/ProcessPage.css'; 
 import '../css/pages/BusinessPage.css'; 
 
@@ -25,33 +26,23 @@ export default function 공정관리() {
   // 검색 함수
   const fetchList = async (keyword = '') => {
     try {
-        // 검색어가 있으면 쿼리 파라미터 붙임, 없으면 전체 조회
         const url = keyword 
             ? `http://localhost:8080/api/proc?searchText=${keyword}`
             : `http://localhost:8080/api/proc`;
         
-        console.log("검색 요청 URL:", url); // 디버깅용 로그
+        // 🔥 [수정] callApi 사용
+        const data = await callApi(url, 'GET');
+        setProcList(data || []);
 
-        const res = await fetch(url);
-        if(res.ok) {
-            const data = await res.json();
-            setProcList(data);
-        } else {
-            console.error("데이터 불러오기 실패");
-        }
     } catch (err) {
         console.error("Fetch Error:", err);
     }
   };
 
   // 2. 이벤트 핸들러
-
   const handleKeyDown = (e) => {
     if (e.nativeEvent.isComposing) return;
-
-    if (e.key === 'Enter') {
-        fetchList(searchText);
-    }
+    if (e.key === 'Enter') { fetchList(searchText); }
   };
   
   const handleRowClick = (item) => {
@@ -72,46 +63,41 @@ export default function 공정관리() {
     }));
   };
 
-  // 저장
+  // === [중요] 저장 핸들러 ===
   const handleSave = async () => {
     if (!formData.procCd || !formData.procNm) {
         alert("공정코드와 공정명은 필수입니다.");
         return;
     }
     try {
-        const res = await fetch('http://localhost:8080/api/proc', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
-        if (res.ok) {
-            alert("저장되었습니다.");
-            fetchList(searchText); // 저장 후 현재 검색어로 목록 갱신
-            setIsEditMode(true);
-        } else {
-            alert("저장 실패");
-        }
+        // 🔥 [수정] fetch -> callApi
+        // callApi가 JSON 변환 및 헤더 주입을 자동으로 처리함
+        await callApi('http://localhost:8080/api/proc', 'POST', formData);
+
+        alert("저장되었습니다.");
+        fetchList(searchText);
+        setIsEditMode(true);
     } catch (err) {
         console.error(err);
+        alert("저장 실패");
     }
   };
 
-  // 삭제
+  // === [중요] 삭제 핸들러 ===
   const handleDelete = async () => {
     if (!isEditMode) return;
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
 
     try {
-        const res = await fetch(`http://localhost:8080/api/proc/${formData.procCd}`, {
-            method: 'DELETE'
-        });
-        if (res.ok) {
-            alert("삭제되었습니다.");
-            handleNew();
-            fetchList(searchText);
-        }
+        // 🔥 [수정] fetch -> callApi
+        await callApi(`http://localhost:8080/api/proc/${formData.procCd}`, 'DELETE');
+
+        alert("삭제되었습니다.");
+        handleNew();
+        fetchList(searchText);
     } catch (err) {
         console.error(err);
+        alert("삭제 실패");
     }
   };
 
@@ -128,7 +114,7 @@ export default function 공정관리() {
         </div>
       </div>
 
-      {/* 2. 검색 영역 (버튼 삭제됨) */}
+      {/* 2. 검색 영역 */}
       <div className="process-search-bar">
         <span className="search-title">🔍 공정코드/명</span>
         <input 

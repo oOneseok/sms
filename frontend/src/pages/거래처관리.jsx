@@ -1,116 +1,85 @@
 import React, { useState, useEffect } from 'react';
+import DaumPostcode from 'react-daum-postcode'; // ✅ 주소 검색 라이브러리
+import { callApi } from '../utils/api';
 import '../css/pages/CustPage.css';
-import '../css/pages/BusinessPage.css'; // 공통 버튼 스타일 (btn new, save 등)
+import '../css/pages/BusinessPage.css';
 
 export default function 거래처관리() {
-  // === 상태 관리 ===
-  const [custList, setCustList] = useState([]);      // 리스트 데이터
-  const [searchText, setSearchText] = useState('');  // 검색어
-  
-  // 탭 상태: '02'(고객사) 기본값
+  const [custList, setCustList] = useState([]);
+  const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('02'); 
 
-  // 폼 데이터 (Entity 필드와 일치)
   const [formData, setFormData] = useState({
     custCd: '', custNm: '', presidentNm: '', bizNo: '', bizCond: '', bizItem: '',
     bizAddr: '', bizTel: '', bizFax: '', 
-    empCd: '', empNm: '', empEmail: '', empTel: '', empHp: '', // empCd 추가
+    empCd: '', empNm: '', empEmail: '', empTel: '', empHp: '',
     bizFlag: '02'
-});
+  });
 
-  const [isEditMode, setIsEditMode] = useState(false); // 수정 모드 여부
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isOpenPost, setIsOpenPost] = useState(false); // ✅ 주소 팝업 상태
 
   // === 1. 데이터 조회 ===
   useEffect(() => {
     fetchList();
-  }, [activeTab]); // 탭이 바뀔 때마다 재조회
+  }, [activeTab]); 
 
   const fetchList = async (keyword = '') => {
     try {
-      // 쿼리 파라미터: bizFlag(탭), searchText(검색어)
       const url = `http://localhost:8080/api/cust?bizFlag=${activeTab}&searchText=${keyword}`;
-      
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setCustList(data);
-      }
+      const data = await callApi(url, 'GET');
+      setCustList(data || []);
     } catch (err) {
       console.error("Fetch Error:", err);
     }
   };
 
-  // === 2. 이벤트 핸들러 ===
+  // === 2. 주소 검색 핸들러 (카카오) ===
+  const handleAddressComplete = (data) => {
+    let fullAddress = data.address;
+    let extraAddress = '';
 
-  // 검색 (엔터키)
-  const handleKeyDown = (e) => {
-    if (e.nativeEvent.isComposing) return; // 한글 조합 중 방지
-    if (e.key === 'Enter') fetchList(searchText);
+    if (data.addressType === 'R') {
+      if (data.bname !== '') extraAddress += data.bname;
+      if (data.buildingName !== '') extraAddress += (extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName);
+      fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
+    }
+
+    // bizAddr에 주소 입력
+    setFormData(prev => ({ ...prev, bizAddr: fullAddress }));
+    setIsOpenPost(false); // 팝업 닫기
   };
 
-  // 탭 변경
-  const handleTabChange = (flag) => {
-    setActiveTab(flag);
-    handleNew(flag); // 탭 바꿀 때 폼 초기화 (해당 탭 플래그로)
-  };
-
-  // 리스트 클릭 (상세 조회)
-  const handleRowClick = (item) => {
-    setFormData(item);
-    setIsEditMode(true);
-  };
-
-  // 신규 버튼
+  // === 3. 이벤트 핸들러 ===
+  const handleKeyDown = (e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') fetchList(searchText); };
+  const handleTabChange = (flag) => { setActiveTab(flag); handleNew(flag); };
+  const handleRowClick = (item) => { setFormData(item); setIsEditMode(true); };
+  
   const handleNew = (targetFlag = activeTab) => {
     setFormData({
-      custCd: '',
-      custNm: '',
-      presidentNm: '',
-      bizNo: '',
-      bizCond: '',
-      bizItem: '',
-      bizAddr: '',
-      bizTel: '',
-      bizFax: '',
-      empNm: '',
-      empEMail: '',
-      empTel: '',
-      empHp: '',
-      bizFlag: targetFlag // 현재 탭에 맞는 구분값 설정
+      custCd: '', custNm: '', presidentNm: '', bizNo: '', bizCond: '', bizItem: '', bizAddr: '', bizTel: '', bizFax: '',
+      empCd: '', empNm: '', empEmail: '', empTel: '', empHp: '',
+      bizFlag: targetFlag
     });
     setIsEditMode(false);
   };
+  
+  const handleChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
 
-  // 입력값 변경
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  // 저장 (등록/수정)
+  // 저장
   const handleSave = async () => {
-    // 필수값 체크
     if (!formData.custCd || !formData.custNm) {
       alert("거래처코드와 거래처명은 필수입니다.");
       return;
     }
-
     try {
-      const res = await fetch('http://localhost:8080/api/cust', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (res.ok) {
-        alert("저장되었습니다.");
-        fetchList(searchText); 
-        setIsEditMode(true);
-      } else {
-        alert("저장 실패: 코드가 중복되었거나 서버 오류입니다.");
-      }
+      await callApi('http://localhost:8080/api/cust', 'POST', formData);
+      alert("저장되었습니다.");
+      fetchList(searchText); 
+      setIsEditMode(true);
     } catch (err) {
       console.error(err);
+      alert("저장 실패 (코드 중복 등)");
     }
   };
 
@@ -118,26 +87,36 @@ export default function 거래처관리() {
   const handleDelete = async () => {
     if (!isEditMode) return;
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-
     try {
-      const res = await fetch(`http://localhost:8080/api/cust/${formData.custCd}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) {
-        alert("삭제되었습니다.");
-        handleNew(); // 폼 초기화
-        fetchList(searchText);
-      }
+      await callApi(`http://localhost:8080/api/cust/${formData.custCd}`, 'DELETE');
+      alert("삭제되었습니다.");
+      handleNew(); 
+      fetchList(searchText);
     } catch (err) {
       console.error(err);
+      alert("삭제 실패");
     }
+  };
+
+  // 팝업 스타일
+  const postCodeStyle = {
+    display: 'block', position: 'absolute', top: '20%', left: '35%', width: '400px', height: '500px', zIndex: 1000, border: '1px solid #333', backgroundColor: 'white', boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
   };
 
   return (
     <div className="cust-page">
       
-      {/* 1. 헤더 (타이틀 + 버튼) */}
+      {/* ✅ 주소 검색 모달 */}
+      {isOpenPost && (
+        <div style={postCodeStyle}>
+            <div style={{textAlign:'right', padding:'8px', background:'#f1f3f5', borderBottom:'1px solid #ddd'}}>
+                <button onClick={() => setIsOpenPost(false)} style={{cursor:'pointer', border:'none', background:'transparent', fontWeight:'bold'}}>닫기 ✕</button>
+            </div>
+            <DaumPostcode onComplete={handleAddressComplete} height="450px" />
+        </div>
+      )}
+
+      {/* 1. 헤더 */}
       <div className="page-header">
         <h2 className="page-title">거래처 관리</h2>
         <div className="button-group">
@@ -161,28 +140,20 @@ export default function 거래처관리() {
         />
       </div>
 
-      {/* 3. 메인 컨텐츠 (리스트 + 상세) */}
+      {/* 3. 메인 컨텐츠 */}
       <div className="cust-content">
         
-        {/* [좌측] 리스트 영역 */}
+        {/* [좌측] 리스트 */}
         <div className="cust-list-area">
-            {/* 탭 버튼 */}
             <div className="tab-header">
-                <button 
-                    className={`tab-btn ${activeTab === '02' ? 'active' : ''}`} 
-                    onClick={() => handleTabChange('02')}
-                >
+                <button className={`tab-btn ${activeTab === '02' ? 'active' : ''}`} onClick={() => handleTabChange('02')}>
                     🏢 고객사 (매출)
                 </button>
-                <button 
-                    className={`tab-btn ${activeTab === '01' ? 'active' : ''}`} 
-                    onClick={() => handleTabChange('01')}
-                >
+                <button className={`tab-btn ${activeTab === '01' ? 'active' : ''}`} onClick={() => handleTabChange('01')}>
                     🛒 구매처 (매입)
                 </button>
             </div>
 
-            {/* 테이블 */}
             <div style={{flex:1, overflowY:'auto'}}>
                 <table className="list-table">
                     <thead>
@@ -225,7 +196,6 @@ export default function 거래처관리() {
                 ✨ 상세 정보 ({activeTab === '02' ? '고객사' : '구매처'})
             </div>
 
-            {/* 기본 정보 그룹 */}
             <div style={{marginBottom:'20px'}}>
                 <div className="detail-form-row">
                     <div className="form-label">거래처코드 <span style={{color:'red'}}>*</span></div>
@@ -260,10 +230,26 @@ export default function 거래처관리() {
                     </div>
                 </div>
 
+                {/* ✅ 주소 찾기 버튼 적용 */}
                 <div className="detail-form-row">
                     <div className="form-label">주소</div>
-                    <div className="form-input-group">
-                        <input type="text" className="form-input" name="bizAddr" value={formData.bizAddr || ''} onChange={handleChange} placeholder="상세 주소를 입력하세요" />
+                    <div className="form-input-group" style={{display:'flex', gap:'5px'}}>
+                        <input 
+                            type="text" 
+                            className="form-input" 
+                            name="bizAddr" 
+                            value={formData.bizAddr || ''} 
+                            onChange={handleChange} 
+                            placeholder="주소 검색 또는 입력" 
+                            style={{flex:1}}
+                        />
+                        <button 
+                            className="btn" 
+                            style={{background:'#e9ecef', color:'#333', border:'1px solid #ced4da', whiteSpace:'nowrap'}}
+                            onClick={() => setIsOpenPost(true)}
+                        >
+                            🔍 주소찾기
+                        </button>
                     </div>
                 </div>
 
@@ -278,20 +264,25 @@ export default function 거래처관리() {
 
             <hr style={{margin:'10px 0 20px 0', border:'0', borderTop:'1px dashed #ddd'}}/>
 
-            {/* 담당자 정보 그룹 */}
+            {/* ✅ 담당자 정보 깔끔하게 정리 */}
             <div style={{marginBottom:'10px'}}>
                 <div style={{fontSize:'14px', fontWeight:'bold', color:'#4dabf7', marginBottom:'10px'}}>👤 담당자 정보</div>
                 
-                <div className="detail-row">
-                    <div className="detail-field"><label>담당자코드</label><input className="detail-input" name="empCd" value={formData.empCd || ''} onChange={handleChange} /></div>
-                    <div className="detail-field"><label>담당자명</label><input className="detail-input" name="empNm" value={formData.empNm || ''} onChange={handleChange} /></div>
-                </div>  
+                <div className="detail-form-row">
+                    <div className="form-label">담당자</div>
+                    <div className="form-input-group">
+                        <input type="text" className="form-input" name="empCd" value={formData.empCd || ''} onChange={handleChange} placeholder="코드 (선택)" />
+                        <input type="text" className="form-input" name="empNm" value={formData.empNm || ''} onChange={handleChange} placeholder="담당자 성명" />
+                    </div>
+                </div>
+                
                 <div className="detail-form-row">
                     <div className="form-label">이메일</div>
                     <div className="form-input-group">
-                        <input type="text" className="form-input" name="empEMail" value={formData.empEMail || ''} onChange={handleChange} placeholder="example@email.com" />
+                        <input type="text" className="form-input" name="empEmail" value={formData.empEmail || ''} onChange={handleChange} placeholder="example@email.com" />
                     </div>
                 </div>
+                
                 <div className="detail-form-row">
                     <div className="form-label">연락처</div>
                     <div className="form-input-group">

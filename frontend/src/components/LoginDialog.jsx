@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 
 function LoginDialog({ showLogin, setShowLogin, saveId, setSaveId, autoLogin, setAutoLogin }) {
-  // 1. 입력값을 저장할 State 추가
-  const [userId, setUserId] = useState(''); // 초기값 비워둠 (테스트용으로 'ADMIN' 넣어도 됨)
+  // 1. 입력값을 저장할 State
+  const [userId, setUserId] = useState(''); 
   const [password, setPassword] = useState('');
 
   if (!showLogin) return null
 
-  // 2. 로그인 처리 함수 추가
+  // 2. 로그인 처리 함수
   const handleLogin = async () => {
     // 유효성 검사
     if (!userId || !password) {
@@ -31,11 +31,14 @@ function LoginDialog({ showLogin, setShowLogin, saveId, setSaveId, autoLogin, se
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("isLoggedIn", "true"); 
-        localStorage.setItem("userInfo", JSON.stringify(data));
+        // 🔥 [수정됨] localStorage -> sessionStorage로 변경
+        // 이제 브라우저나 탭을 닫으면 로그인 정보가 사라집니다.
+        sessionStorage.setItem("isLoggedIn", "true"); 
+        sessionStorage.setItem("userInfo", JSON.stringify(data));
+        
         setShowLogin(false);
       } else {
-        // 실패 시 (비밀번호 틀림 등)
+        // 실패 시
         alert(data.message || '로그인에 실패했습니다.');
       }
     } catch (error) {
@@ -61,7 +64,7 @@ function LoginDialog({ showLogin, setShowLogin, saveId, setSaveId, autoLogin, se
         <div className="login-dialog-content">
           <div className="login-form">
             
-            {/* 3. 아이디 입력 필드 수정 (defaultValue -> value, onChange) */}
+            {/* 아이디 입력 */}
             <div className="login-field">
               <label>사용자ID</label>
               <input 
@@ -73,7 +76,7 @@ function LoginDialog({ showLogin, setShowLogin, saveId, setSaveId, autoLogin, se
               />
             </div>
 
-            {/* 4. 비밀번호 입력 필드 수정 */}
+            {/* 비밀번호 입력 */}
             <div className="login-field">
               <label>비밀번호</label>
               <input 
@@ -104,7 +107,7 @@ function LoginDialog({ showLogin, setShowLogin, saveId, setSaveId, autoLogin, se
               </label>
             </div>
             
-            {/* 5. 로그인 버튼에 클릭 이벤트 연결 */}
+            {/* 로그인 버튼 */}
             <button className="login-submit" onClick={handleLogin}>로그인</button>
           
           </div>

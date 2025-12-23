@@ -25,6 +25,10 @@ public class LogMst {
     @Column(name = "LOG_DT", updatable = false)
     private LocalDateTime logDt;
 
+    // 행동한 사용자 기록
+    @Column(name = "LOG_USER", length = 20)
+    private String logUser;
+
     // 2. [신규] 행위 유형
     // 예: "등록", "수정", "삭제" (또는 "INSERT", "UPDATE"...)
     @Column(name = "ACTION_TYPE", length = 10)

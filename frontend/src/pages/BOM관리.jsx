@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import '../css/pages/BomPage.css'; // 새로 만든 CSS import
+import { callApi } from '../utils/api'; // 🔥 fetch 대신 사용할 API 함수 임포트
+import '../css/pages/BomPage.css'; 
 
 export default function BomPage() {
   // === 데이터 상태 ===
@@ -13,14 +14,14 @@ export default function BomPage() {
 
   // === 입력 폼 상태 ===
   const [formData, setFormData] = useState({
-    pItemCd: '',   // 제품코드 (자동) - 절대 지워지면 안됨
+    pItemCd: '',   // 제품코드 (자동)
     pItemNm: '',   // 제품명 (자동)
     sItemCd: '',   // 자재코드 (선택)
     sItemNm: '',   // 자재명 (자동)
     seqNo: '',     // 순번
     useQty: 0,     // 소요량
     lossRt: 0,     // 로스율
-    materialCost: 0, // 재료비 (단가 * 소요량, 단순 표시용)
+    materialCost: 0, // 재료비
     procCd: '',    // 공정
     remark: ''     // 비고  
   });
@@ -34,30 +35,22 @@ export default function BomPage() {
 
   const fetchItems = async () => {
     try {
-      // 1. 아이템 목록 조회
-      const resItem = await fetch('http://localhost:8080/api/item');
-      // 2. 분류 목록 조회 (어떤 게 소분류인지 알기 위해)
-      const resType = await fetch('http://localhost:8080/api/item-types/all'); // 전체 플랫 리스트 필요 (혹은 트리 순회)
-      // *편의상 백엔드에서 typeLv 정보를 itemMst에 포함해서 주면 제일 좋음*
+      // 조회는 로그 안 남기므로 fetch 써도 무방하지만 통일성을 위해 callApi 사용 가능
+      // 여기선 편의상 기존 fetch 유지하거나 callApi로 변경 (GET은 파라미터 없음)
+      const items = await callApi('http://localhost:8080/api/item', 'GET');
       
-      if (resItem.ok) {
-        const items = await resItem.json();
-        
-        // 제품(02)
-        setProducts(items.filter(item => item.itemFlag === '02'));
-        setMaterials(items.filter(item => item.itemFlag === '01' && item.typeCd)); 
-      }
+      // 제품(02)
+      setProducts(items.filter(item => item.itemFlag === '02'));
+      setMaterials(items.filter(item => item.itemFlag === '01' && item.typeCd)); 
+      
     } catch (err) { console.error(err); }
   };
 
   // === 2. BOM 조회 (제품 클릭 시) ===
   const fetchBomList = async (pItemCd) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/bom/${pItemCd}`);
-      if (res.ok) {
-        const data = await res.json();
-        setBomList(data);
-      }
+      const data = await callApi(`http://localhost:8080/api/bom/${pItemCd}`, 'GET');
+      setBomList(data || []);
     } catch (err) { console.error(err); }
   };
 
@@ -68,10 +61,10 @@ export default function BomPage() {
     setSelectedProduct(item);
     fetchBomList(item.itemCd); // BOM 조회
     
-    // 폼 초기화 (제품 정보는 세팅)
+    // 폼 초기화
     setFormData({
-      pItemCd: item.itemCd, // ✅ 제품 코드 설정
-      pItemNm: item.itemNm, // ✅ 제품 명 설정
+      pItemCd: item.itemCd,
+      pItemNm: item.itemNm,
       sItemCd: '', 
       sItemNm: '', 
       seqNo: '', 
@@ -85,30 +78,26 @@ export default function BomPage() {
     setSelectedBomRow(null);
   };
 
-  // [좌측 하단] 자재 클릭 -> 폼에 자재 정보 입력
+  // [좌측 하단] 자재 클릭
   const handleMaterialClick = (item) => {
     if (!selectedProduct) return alert("먼저 상단에서 제품을 선택해주세요.");
     
-    // 폼에 자재 정보 세팅 (기존 제품 정보 pItemCd는 유지해야 함!)
     setFormData(prev => ({
-      ...prev, // ✅ 중요: 기존에 있던 pItemCd 등의 정보를 유지함
+      ...prev,
       sItemCd: item.itemCd,
       sItemNm: item.itemNm,
-      // 자재 단가 등을 가져와서 재료비 예상치 계산 가능 (여기선 0)
       materialCost: (item.itemCost || 0) * (prev.useQty || 0),
-      seqNo: '' // 신규이므로 순번 비움
+      seqNo: '' 
     }));
     setIsEditMode(false);
   };
 
-  // [하단] BOM 행 클릭 -> 수정 모드
+  // [하단] BOM 행 클릭
   const handleBomRowClick = (bom) => {
     setSelectedBomRow(bom);
     setIsEditMode(true);
     
-    // 데이터 바인딩
     setFormData({
-      // 백엔드 필드명(pItemCd) 사용, 없으면 선택된 제품 코드 사용 (안전장치)
       pItemCd: bom.pItemCd || selectedProduct.itemCd, 
       pItemNm: selectedProduct.itemNm,
       sItemCd: bom.sItemCd,
@@ -122,13 +111,12 @@ export default function BomPage() {
     });
   };
 
-  // [우측 상단] 신규 자재 버튼 (폼 초기화)
+  // [우측 상단] 신규 자재 버튼
   const handleNewBom = () => {
     if (!selectedProduct) return alert("제품을 먼저 선택해주세요.");
 
-    // ✅ 핵심 수정 부분: 제품 정보(pItemCd)는 유지하고 나머지 자재 필드만 비움
     setFormData(prev => ({
-        ...prev,          // pItemCd, pItemNm 유지
+        ...prev,          
         sItemCd: '',
         sItemNm: '',
         seqNo: '',
@@ -150,17 +138,14 @@ export default function BomPage() {
 
   // 저장
   const handleSave = async () => {
-    // ✅ 안전장치: pItemCd가 없으면 저장 차단
     if (!formData.pItemCd) {
         alert("오류: 제품(부모 품목) 정보가 없습니다.\n좌측 목록에서 제품을 다시 선택해주세요.");
         return;
     }
     if (!formData.sItemCd) return alert("자재를 선택해주세요.");
 
-    // 순번 자동 채번 (신규일 때만)
     let saveSeq = formData.seqNo;
     if (!isEditMode && !saveSeq) {
-        // 기존 리스트에서 가장 큰 seqNo 찾아서 +1
         const maxSeq = bomList.length > 0 ? Math.max(...bomList.map(b => b.seqNo)) : 0;
         saveSeq = maxSeq + 1;
     }
@@ -176,20 +161,16 @@ export default function BomPage() {
     };
 
     try {
-      const res = await fetch('http://localhost:8080/api/bom', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        alert("저장되었습니다.");
-        fetchBomList(formData.pItemCd); // 목록 갱신
-        handleNewBom(); // 저장 후 폼 초기화 (제품 정보 유지)
-      } else {
-        const msg = await res.text();
-        alert("저장 실패: " + msg);
-      }
-    } catch (e) { console.error(e); }
+      // 🔥 [수정] fetch -> callApi
+      await callApi('http://localhost:8080/api/bom', 'POST', payload);
+      
+      alert("저장되었습니다.");
+      fetchBomList(formData.pItemCd);
+      handleNewBom(); 
+    } catch (e) { 
+      console.error(e);
+      alert("저장 실패");
+    }
   };
 
   // 삭제
@@ -198,18 +179,14 @@ export default function BomPage() {
     if (!window.confirm("삭제하시겠습니까?")) return;
 
     try {
-        const res = await fetch(`http://localhost:8080/api/bom?pItemCd=${formData.pItemCd}&sItemCd=${formData.sItemCd}&seqNo=${formData.seqNo}`, {
-            method: 'DELETE'
-        });
+        // 🔥 [수정] fetch -> callApi
+        // DELETE 요청은 body 없이 URL 쿼리 파라미터로 보냄
+        await callApi(`http://localhost:8080/api/bom?pItemCd=${formData.pItemCd}&sItemCd=${formData.sItemCd}&seqNo=${formData.seqNo}`, 'DELETE');
         
-        if (res.ok) {
-            alert("삭제되었습니다.");
-            fetchBomList(formData.pItemCd);
-            handleNewBom();
-        } else {
-            alert("삭제 실패");
-        }
-    } catch (e) { console.error(e); }
+        alert("삭제되었습니다.");
+        fetchBomList(formData.pItemCd);
+        handleNewBom();
+    } catch (e) { console.error(e); alert("삭제 실패"); }
   };
 
   return (
