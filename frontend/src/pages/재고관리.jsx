@@ -10,7 +10,7 @@ import "../css/pages/재고관리.css";
  */
 const API = {
   stocks: "http://localhost:8080/api/stocks",
-  items: "http://localhost:8080/api/item", // ✅ 중요: /api/items ❌ -> /api/item ✅
+  items: "http://localhost:8080/api/item", 
   whs: "http://localhost:8080/api/whs",
 };
 
