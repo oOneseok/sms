@@ -279,3 +279,33 @@
   flex: 1 1 45%;
   border-left: 1px solid #a0a0a0;
 }
+/* ✅ 최소재고 경고 표시(상세 입력칸) */
+.detail-input.stock-low {
+  border: 2px solid #d32f2f !important;
+  background: #fff3f3;
+  color: #b71c1c;
+  font-weight: 700;
+}
+
+/* ✅ 경고 문구 */
+.stock-warning {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #d32f2f;
+  font-weight: 700;
+}
+
+/* ✅ label 옆 힌트 */
+.minqty-hint {
+  margin-left: 6px;
+  font-size: 11px;
+  color: #666;
+  font-weight: 600;
+}
+
+/* ✅ 리스트에서 최소재고 이하일 때 재고수량 셀 강조 */
+.stock-low-cell {
+  color: #d32f2f;
+  font-weight: 800;
+  background: #fff3f3;
+}
