@@ -309,3 +309,84 @@
   font-weight: 800;
   background: #fff3f3;
 }
+/* ===== BOM-like layout for Stock page ===== */
+.stock-bom-layout{
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 12px;
+}
+
+.stock-bom-layout.split{
+  grid-template-columns: 360px 1fr 520px;
+}
+
+.stock-bom-left{
+  display: flex;
+  flex-direction: column;
+}
+
+.stock-bom-center{
+  background: #fff;
+  border: 1px solid #d6d6d6;
+  padding: 12px;
+  min-height: 400px;
+}
+
+.panel-box{
+  background: #fff;
+  border: 1px solid #d6d6d6;
+}
+
+.panel-header{
+  background: #f1f3f5;
+  border-bottom: 1px solid #d6d6d6;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.table-scroll-area{
+  max-height: 260px;
+  overflow: auto;
+}
+
+/* tree 느낌 */
+.bom-tree-root{
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.bom-tree-block{
+  margin-bottom: 14px;
+}
+
+.bom-tree-node{
+  padding: 10px 10px;
+  border: 1px solid #e1e1e1;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.bom-tree-node:hover{
+  background: #f0f6ff;
+}
+
+.selected-node{
+  outline: 2px solid #8fb7ff;
+  background: #eef5ff;
+}
+
+.bom-tree-sub{
+  margin-top: 6px;
+  font-size: 12px;
+  color: #555;
+}
+
+.bom-tree-warehouses{
+  margin-left: 14px;
+  margin-top: 8px;
+}
+
+.text-low{
+  color: #d93025;
+  font-weight: 800;
+}

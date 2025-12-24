@@ -122,4 +122,19 @@ public class ItemStockController {
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
     }
+
+    // ✅ 품목 기준 합산 목록
+// GET /api/stocks/summary
+    @GetMapping("/summary")
+    public java.util.List<ItemStockRepository.StockSummaryView> summary() {
+        return itemStockRepository.summary();
+    }
+
+    // ✅ 특정 품목의 창고별 재고 목록
+// GET /api/stocks/by-item/{itemCd}
+    @GetMapping("/by-item/{itemCd}")
+    public java.util.List<ItemStock> byItem(@PathVariable String itemCd) {
+        return itemStockRepository.findByIdItemCd(itemCd);
+    }
+
 }
