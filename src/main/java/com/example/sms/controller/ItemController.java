@@ -1,14 +1,22 @@
 package com.example.sms.controller;
 
+import com.example.sms.dto.ItemResponseDto;
 import com.example.sms.entity.ItemMst;
-import com.example.sms.repository.BomRepository;
+import com.example.sms.entity.ItemTypeMst;
 import com.example.sms.repository.ItemRepository;
+import com.example.sms.repository.ItemTypeRepository;
 import com.example.sms.service.LogService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/item")
@@ -16,48 +24,103 @@ import java.util.List;
 public class ItemController {
 
     private final ItemRepository itemRepository;
+    private final ItemTypeRepository itemTypeRepository;
     private final LogService logService;
-    private final BomRepository bomRepository;
+
     private static final String MENU_NAME = "품목 관리";
 
-    // 1. 조회
+    // 1. 아이템 목록 조회
     @GetMapping
-    public List<ItemMst> getItemList(@RequestParam(required = false, defaultValue = "") String searchText) {
-        if (searchText.isEmpty()) {
-            return itemRepository.findAll();
-        } else {
-            return itemRepository.findByItemCdContainingOrItemNmContaining(searchText, searchText);
+    public List<ItemResponseDto> getItemList(
+            @RequestParam(required = false, defaultValue = "") String searchText,
+            @RequestParam(required = false) String typeCd
+    ) {
+        // 1. 모든 분류 정보 로딩 (경로 표시용)
+        List<ItemTypeMst> allTypes = itemTypeRepository.findAll();
+        Map<String, ItemTypeMst> typeMap = allTypes.stream()
+                .collect(Collectors.toMap(ItemTypeMst::getTypeCd, Function.identity()));
+
+        List<ItemMst> items;
+
+        // Case A: 분류 필터가 없을 때
+        if (typeCd == null || typeCd.isEmpty()) {
+            if (searchText.isEmpty()) {
+                items = itemRepository.findAll();
+            } else {
+                items = itemRepository.searchByText(searchText);
+            }
         }
+        // Case B: 분류 필터가 있을 때
+        else {
+            List<String> targetTypeCds = new ArrayList<>();
+            collectSubTypesInMemory(allTypes, typeCd, targetTypeCds);
+
+            if (searchText.isEmpty()) {
+                items = itemRepository.findByTypeCdIn(targetTypeCds);
+            } else {
+                items = itemRepository.searchByTypesAndText(targetTypeCds, searchText);
+            }
+        }
+
+        // 2. DTO 변환 (분류 경로 포함)
+        return items.stream()
+                .map(item -> {
+                    String path = buildTypePath(item.getTypeCd(), typeMap);
+                    return ItemResponseDto.fromEntity(item, path);
+                })
+                .collect(Collectors.toList());
     }
 
     // 2. 저장
     @PostMapping
-    public ItemMst saveItem(@RequestBody ItemMst itemMst) {
-        // A. 신규인지 수정인지 판단 로직 (DB에 해당 ID가 없으면 등록, 있으면 수정으로 간주)
-        boolean isExists = itemRepository.existsById(itemMst.getItemCd());
-        String actionType = isExists ? "수정" : "등록";
+    public ResponseEntity<ItemMst> saveItem(@RequestBody ItemMst item) {
+        if (item.getItemCd() == null || item.getItemCd().isBlank()) {
+            throw new IllegalArgumentException("품목 코드는 필수입니다.");
+        }
+        boolean exists = itemRepository.existsById(item.getItemCd());
+        String actionType = exists ? "수정" : "등록";
 
-        // B. DB 저장
-        ItemMst saved = itemRepository.save(itemMst);
-
-        // C. 로그 저장
+        ItemMst saved = itemRepository.save(item);
         logService.saveLog(MENU_NAME, actionType, saved.getItemCd(), saved.getItemNm());
-        return saved;
+
+        return ResponseEntity.ok(saved);
     }
 
     // 3. 삭제
-    @Transactional
     @DeleteMapping("/{itemCd}")
-    public void deleteItem(@PathVariable String itemCd) {
-        // A. 삭제 전에 이름을 알아내야 로그에 남길 수 있음! (DB에서 조회 먼저 수행)
+    @Transactional
+    public ResponseEntity<Void> deleteItem(@PathVariable String itemCd) {
         ItemMst target = itemRepository.findById(itemCd)
-                .orElseThrow(() -> new IllegalArgumentException("대상 품목이 없습니다."));
-        String targetName = target.getItemNm();
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 품목입니다."));
 
-        // B. 삭제 수행
-        bomRepository.deleteByItemCd(itemCd);
         itemRepository.delete(target);
-        // C. 로그 저장 (삭제된 아이템의 이름을 같이 넘겨줌)
-        logService.saveLog(MENU_NAME, "삭제", itemCd, targetName);
+        logService.saveLog(MENU_NAME, "삭제", target.getItemCd(), target.getItemNm());
+
+        return ResponseEntity.ok().build();
+    }
+
+    // --- Helper Methods ---
+    private String buildTypePath(String currentTypeCd, Map<String, ItemTypeMst> typeMap) {
+        if (currentTypeCd == null || !typeMap.containsKey(currentTypeCd)) return "-";
+        List<String> pathNames = new ArrayList<>();
+        ItemTypeMst current = typeMap.get(currentTypeCd);
+        while (current != null) {
+            pathNames.add(0, current.getTypeNm());
+            if (current.getParent() != null) {
+                current = typeMap.get(current.getParent().getTypeCd());
+            } else {
+                current = null;
+            }
+        }
+        return String.join(" > ", pathNames);
+    }
+
+    private void collectSubTypesInMemory(List<ItemTypeMst> allTypes, String currentCd, List<String> result) {
+        result.add(currentCd);
+        for (ItemTypeMst type : allTypes) {
+            if (type.getParent() != null && Objects.equals(type.getParent().getTypeCd(), currentCd)) {
+                collectSubTypesInMemory(allTypes, type.getTypeCd(), result);
+            }
+        }
     }
 }

@@ -2,21 +2,42 @@ package com.example.sms.repository;
 
 import com.example.sms.entity.ItemMst;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.util.List;
 
 public interface ItemRepository extends JpaRepository<ItemMst, String> {
-    // 품목코드 또는 품목명으로 검색
-    List<ItemMst> findByItemCdContainingOrItemNmContaining(String itemCd, String itemNm);
 
-    @Modifying
-    @Query("UPDATE ItemMst i SET i.typeCd = :newTypeCd WHERE i.typeCd = :oldTypeCd")
-    void updateTypeCd(@Param("oldTypeCd") String oldTypeCd, @Param("newTypeCd") String newTypeCd);
+    // 1. 검색어만 있을 때 (대소문자 무시)
+    @Query(value = """
+        SELECT * FROM TB_ITEMMST i
+        WHERE (
+            UPPER(i.ITEM_NM) LIKE '%' || UPPER(:searchText) || '%'
+            OR
+            UPPER(i.ITEM_CD) LIKE '%' || UPPER(:searchText) || '%'
+        )
+    """, nativeQuery = true)
+    List<ItemMst> searchByText(@Param("searchText") String searchText);
 
-    @Modifying
-    @Query("DELETE FROM ItemMst i WHERE i.typeCd = :typeCd")
-    void deleteByTypeCd(@Param("typeCd") String typeCd);
+    // 2. 분류만 있을 때 (Native Query로 공백/타입 문제 해결)
+    @Query(value = """
+        SELECT * FROM TB_ITEMMST i
+        WHERE i.TYPE_CD IN (:typeCds)
+    """, nativeQuery = true)
+    List<ItemMst> findByTypeCdIn(@Param("typeCds") List<String> typeCds);
+
+    // 3. 분류 + 검색어 (대소문자 무시)
+    @Query(value = """
+        SELECT * FROM TB_ITEMMST i
+        WHERE i.TYPE_CD IN (:typeCds)
+        AND (
+            UPPER(i.ITEM_NM) LIKE '%' || UPPER(:searchText) || '%'
+            OR
+            UPPER(i.ITEM_CD) LIKE '%' || UPPER(:searchText) || '%'
+        )
+    """, nativeQuery = true)
+    List<ItemMst> searchByTypesAndText(@Param("typeCds") List<String> typeCds,
+                                       @Param("searchText") String searchText);
+
+    void deleteByTypeCd(String typeCd);
 }

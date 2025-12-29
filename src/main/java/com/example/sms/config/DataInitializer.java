@@ -41,7 +41,6 @@ public class DataInitializer implements CommandLineRunner {
 
     // === 2. 메뉴 데이터 생성 로직 ===
     private void initMenus() {
-        // [1단계] 부모 메뉴(최상위 탭) 생성
         // (URL은 폴더명이나 대표 경로로 설정, 실제 이동은 하지 않음)
         createMenu("M10", "기준정보관리", 1, null, null, "/standard");
         createMenu("M20", "구매/영업관리", 2, null, null, "/sales");
@@ -49,7 +48,6 @@ public class DataInitializer implements CommandLineRunner {
         createMenu("M40", "생산관리", 4, null, null, "/production");
         createMenu("M90", "시스템관리", 9, null, null, "/system");
 
-        // [2단계] 자식 메뉴 생성 (부모 ID 연결)
 
         // 1. 기준정보관리 (M10) 하위
         createMenu("M1001", "사업장 관리", 1, "📦", "M10", "/standard/business");
@@ -97,7 +95,7 @@ public class DataInitializer implements CommandLineRunner {
                 .menuNm(menuNm)
                 .seqNo(seqNo)
                 .menuIcon(icon)
-                .menuUrl(url) // 엔티티에 url 필드가 있다고 가정 (MenuMst 수정 필요 시 확인)
+                .menuUrl(url)
                 .parent(parent)
                 .build();
 

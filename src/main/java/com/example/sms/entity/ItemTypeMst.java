@@ -12,29 +12,24 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Table(name = "TB_ITEMTYPEMST")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ItemTypeMst {
 
     @Id
     @Column(name = "TYPE_CD", length = 20)
-    private String typeCd; // 분류 코드 (PK)
+    private String typeCd;
 
     @Column(name = "TYPE_NM")
-    private String typeNm; // 분류명 (육류, 유제품 등)
+    private String typeNm;
 
-    @Column(name = "TYPE_LV")
-    private String typeLv; // 1:대, 2:중, 3:소
-
-    // 부모 분류 (Self Reference)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PARENT_TYPE")
-    @JsonIgnoreProperties("children")
-    @ToString.Exclude
+    @JsonIgnoreProperties("children") // 무한 루프 방지용 (기존 유지)
     private ItemTypeMst parent;
 
-    // 자식 분류들
-    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
     @OrderBy("typeCd ASC")
-    @ToString.Exclude
+    @JsonIgnoreProperties("parent") // 무한 루프 방지용 (기존 유지)
     @Builder.Default
     private List<ItemTypeMst> children = new ArrayList<>();
 }

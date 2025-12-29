@@ -14,50 +14,64 @@ import lombok.ToString;
 @ToString
 @Table(name = "TB_CUSTMST")
 public class CustMst {
+    // 1. 거래처 CD (PK)
     @Id
-    @Column(name = "CUST_CD", length = 20)
+    @Column(name = "CUST_CD", length = 10)
     private String custCd;
 
-    @Column(name = "CUST_NM")
+    // 2. 거래처명
+    @Column(name = "CUST_NM", length = 50, nullable = false)
     private String custNm;
 
-    @Column(name = "PRESIDENT_NM")
+    // 3. 대표자명
+    @Column(name = "PRESIDENT_NM", length = 20)
     private String presidentNm;
 
-    @Column(name = "BIZ_NO")
+    // 4. 사업자번호
+    @Column(name = "BIZ_NO", length = 20)
     private String bizNo;
 
-    @Column(name = "BIZ_COND")
+    // 5. 업종
+    @Column(name = "BIZ_COND", length = 20)
     private String bizCond;
 
-    @Column(name = "BIZ_ITEM")
+    // 6. 업태
+    @Column(name = "BIZ_ITEM", length = 50)
     private String bizItem;
 
-    @Column(name = "BIZ_ADDR")
+    // 7. 주소
+    @Column(name = "BIZ_ADDR", length = 200)
     private String bizAddr;
 
-    @Column(name = "BIZ_TEL")
+    // 8. 전화번호
+    @Column(name = "BIZ_TEL", length = 20)
     private String bizTel;
 
-    @Column(name = "BIZ_FAX")
+    // 9. 팩스
+    @Column(name = "BIZ_FAX", length = 20)
     private String bizFax;
 
-    // 추가된 컬럼
-    @Column(name = "EMP_CD")
+    // 10. 담당자 코드
+    @Column(name = "EMP_CD", length = 20)
     private String empCd;
 
-    @Column(name = "EMP_NM")
+    // 11. 담당자명
+    @Column(name = "EMP_NM", length = 50)
     private String empNm;
 
-    @Column(name = "EMP_EMAIL")
-    private String empEmail;
+    // 12. 담당자 E-MAIL
+    @Column(name = "EMP_E_MAIL", length = 30)
+    private String empEMail;
 
-    @Column(name = "EMP_TEL")
+    // 13. 담당자 전화번호(직통번호)
+    @Column(name = "EMP_TEL", length = 20)
     private String empTel;
 
-    @Column(name = "EMP_HP")
+    // 14. 담당자 핸드폰번호
+    @Column(name = "EMP_HP", length = 20)
     private String empHp;
 
+    // 15. 구분 (01-구매처/02-고객사)
     @Column(name = "BIZ_FLAG", length = 2)
-    private String bizFlag; // 01(구매), 02(판매)
+    private String bizFlag;
 }
