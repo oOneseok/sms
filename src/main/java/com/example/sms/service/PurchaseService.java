@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -135,5 +136,27 @@ public class PurchaseService {
                 .orElse(0);
 
         return prefix + String.format("%03d", max + 1);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PurchaseDetMst> getWaitingForInboundList() {
+        // Repository에 findByStatus 메소드가 없다면, findAll 후 필터링하거나 JPQL 사용
+        // 여기서는 간단하게 모든 발주 상세를 가져와서 stream으로 필터링하는 방식 예시 (데이터 많으면 Repository 쿼리로 변경 권장)
+        return purchaseDetMstRepository.findAll().stream()
+                .filter(det -> "p2".equals(det.getStatus())) // p2: 발주확정
+                .collect(Collectors.toList());
+    }
+
+    // [추가] 상태 변경 (입고 완료 시 호출)
+    @Transactional
+    public void updateDetailStatus(String purchaseCd, Integer seqNo, String newStatus) {
+        PurchaseDetIdMst id = new PurchaseDetIdMst();
+        id.setPurchaseCd(purchaseCd);
+        id.setSeqNo(seqNo);
+
+        PurchaseDetMst det = purchaseDetMstRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("발주 상세 정보를 찾을 수 없습니다."));
+
+        det.setStatus(newStatus);
     }
 }

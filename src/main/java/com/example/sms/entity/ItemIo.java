@@ -5,8 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 
-//Initem + OutItem
-
 @Entity
 @Table(name = "TB_ITEM_IO")
 @Getter @Setter

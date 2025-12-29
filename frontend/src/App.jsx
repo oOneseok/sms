@@ -235,12 +235,11 @@
                 {/* 구매/영업관리 */}
                 <Route path="/구매영업관리/발주관리" element={<발주관리 />} />
                 <Route path="/구매영업관리/주문관리" element={<주문관리 />} />
-                <Route path="/구매영업관리/출고관리" element={<출고관리 />} />
-                <Route path="/구매영업관리/반품관리" element={<반품관리 />} />
                 
                 {/* 자재관리 */}
                 <Route path="/자재관리/입고관리" element={<입고관리 />} />
                 <Route path="/자재관리/재고관리" element={<재고관리 />} />
+                <Route path="/자재관리/출고관리" element={<출고관리 />} />
                 
                 {/* 생산관리 */}
                 <Route path="/생산관리/생산계획" element={<생산계획 />} />

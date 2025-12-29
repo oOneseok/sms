@@ -1,28 +1,31 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../css/pages/PurchasePage.css";
 
 const API = "http://localhost:8080";
+
 const STATUS = [
   { v: "p1", t: "등록" },
+  { v: "p2", t: "발주확정" },
+  { v: "p3", t: "입고완료" }, // 시스템 전용 (드롭다운에서 숨김 처리됨)
   { v: "p9", t: "취소" },
-  { v: "p2", t: "확정" },
 ];
 
-// ✅ 고유 ID 생성 유틸 (행 삭제/추가 시 키 밀림 방지)
 const generateId = () => `row_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export default function 발주관리() {
-  // left
+  const navigate = useNavigate();
+
+  // --- 상태 관리 ---
   const [list, setList] = useState([]);
   const [details, setDetails] = useState([]);
   const [selectedCd, setSelectedCd] = useState(null);
   const [q, setQ] = useState("");
 
-  // options
   const [custs, setCusts] = useState([]);
   const [items, setItems] = useState([]);
 
-  // right form
+  // Master Form
   const [mst, setMst] = useState({
     purchaseCd: "",
     purchaseDt: "",
@@ -31,37 +34,33 @@ export default function 발주관리() {
     remark: "",
   });
 
-  // ✅ [수정 1] 초기 행에도 고유 ID 부여
+  // Detail Form
   const emptyRow = () => ({ 
-    _uiId: generateId(), // 프론트 전용 ID
+    _uiId: generateId(),
     itemCd: "", 
     purchaseQty: "", 
     status: "p1", 
     remark: "" 
   });
-  
   const [editRows, setEditRows] = useState([emptyRow()]);
 
-  // ---- load options
+  // --- 초기 로딩 ---
   useEffect(() => {
     (async () => {
       try {
         const r1 = await fetch(`${API}/api/cust?bizFlag=01`).then((r) => r.json());
         setCusts(Array.isArray(r1) ? r1 : []);
-      } catch {
-        setCusts([]);
-      }
-
-      try {
         const r2 = await fetch(`${API}/api/item?itemFlag=01`).then((r) => r.json());
         setItems(Array.isArray(r2) ? r2 : []);
       } catch {
+        setCusts([]);
         setItems([]);
       }
     })();
+    fetchList();
   }, []);
 
-  // ---- load list
+  // --- 목록 조회 ---
   const fetchList = async () => {
     try {
       const data = await fetch(`${API}/api/purchase`).then((r) => r.json());
@@ -80,15 +79,10 @@ export default function 발주관리() {
       );
     } catch {
       setList([]);
-      alert("발주 목록 조회 실패");
     }
   };
 
-  useEffect(() => {
-    fetchList();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ---- select one
+  // --- 단건 선택 ---
   const selectOne = async (purchaseCd) => {
     try {
       setSelectedCd(purchaseCd);
@@ -107,11 +101,11 @@ export default function 발주관리() {
         remark: m.remark ?? "",
       });
 
-      // ✅ [수정 2] 기존 데이터 로드 시에도 고유 ID 부여하여 매핑
       setEditRows(
         detArr.length
           ? detArr.map((x) => ({
-              _uiId: generateId(), // Key로 사용할 ID 생성
+              _uiId: generateId(),
+              _seqNo: x.id?.seqNo,
               itemCd: x.itemCd ?? "",
               purchaseQty: x.purchaseQty ?? "",
               status: x.status ?? "p1",
@@ -124,7 +118,6 @@ export default function 발주관리() {
     }
   };
 
-  // ---- helpers
   const custName = useMemo(() => {
     const map = new Map(custs.map((c) => [c.custCd, c.custNm]));
     return (cd) => map.get(cd) ?? cd ?? "-";
@@ -143,74 +136,57 @@ export default function 발주관리() {
   };
 
   const addRow = () => setEditRows((p) => [...p, emptyRow()]);
-  
-  // ✅ [수정 3] 인덱스 대신 고유 ID(_uiId)를 사용해 삭제/수정하지 않아도 되지만,
-  // 편의상 map index를 사용하되 렌더링 key는 _uiId를 사용하므로 안전함.
   const delRow = (idx) => setEditRows((p) => (p.length === 1 ? p : p.filter((_, i) => i !== idx)));
   const setRow = (idx, k, v) => setEditRows((p) => p.map((r, i) => (i === idx ? { ...r, [k]: v } : r)));
 
-  const buildPayload = () => {
-    if (!mst.purchaseDt) throw new Error("발주일자는 필수");
-    if (!mst.custCd) throw new Error("거래처는 필수");
-    if (!editRows.length) throw new Error("상세 1건 이상 필요");
-
-    editRows.forEach((r, i) => {
-      if (!r.itemCd) throw new Error(`상세${i + 1}: 품목 선택`);
-      const qty = Number(r.purchaseQty);
-      if (!Number.isFinite(qty) || qty <= 0) throw new Error(`상세${i + 1}: 수량 1 이상`);
-      if (!["p1", "p2", "p9"].includes(r.status)) throw new Error(`상세${i + 1}: 상태값 오류`);
-    });
-
-    return {
-      // 신규일 때는 null을 보내서 백엔드가 생성하게 함
-      purchaseCd: mst.purchaseCd?.trim() || null, 
-      purchaseDt: mst.purchaseDt,
-      custCd: mst.custCd,
-      custEmp: mst.custEmp?.trim() || null,
-      remark: mst.remark?.trim() || null,
-      
-      // ✅ [수정 4] 서버 전송 시 프론트 전용 _uiId 제거
-      details: editRows.map((r) => ({
-        itemCd: r.itemCd,
-        purchaseQty: Number(r.purchaseQty),
-        status: r.status,
-        remark: r.remark?.trim() || null,
-      })),
-    };
-  };
-
+  // --- 저장 ---
   const save = async () => {
     try {
-      const payload = buildPayload();
-      
-      // 백엔드 로직상 ID 유무로 신규/수정을 판단하므로 POST 하나로 통일 가능
-      // (혹은 RESTful 원칙에 따라 신규 POST, 수정 PUT으로 분기해도 됨)
+      if (!mst.purchaseDt || !mst.custCd || !editRows.length) throw new Error("필수값 누락");
+
+      const payload = {
+        purchaseCd: mst.purchaseCd?.trim() || null,
+        purchaseDt: mst.purchaseDt,
+        custCd: mst.custCd,
+        custEmp: mst.custEmp?.trim() || null,
+        remark: mst.remark?.trim() || null,
+        details: editRows.map((r) => ({
+          itemCd: r.itemCd,
+          purchaseQty: Number(r.purchaseQty),
+          status: r.status,
+          remark: r.remark?.trim() || null,
+        })),
+      };
+
       const res = await fetch(`${API}/api/purchase`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      
+
       if (!res.ok) throw new Error(await res.text());
 
       const data = await res.json();
-      alert(`저장 완료: ${data.purchaseCd}`); // 백엔드에서 purchaseCd 리턴한다고 가정 (String 리턴 시 json() 주의)
-
+      alert("저장되었습니다.");
       await fetchList();
-      // 저장 후 해당 건 재조회 (신규일 경우 생성된 번호로 조회)
       const newCd = typeof data === 'string' ? data : data.purchaseCd;
       if (newCd) await selectOne(newCd);
-      
     } catch (e) {
-      // JSON 파싱 에러 방지 등을 위해 텍스트 처리 등 보완 가능
-      alert(`저장 실패\n${e?.message ?? "오류가 발생했습니다."}`);
+      alert(e.message);
     }
   };
 
-  // 수정 버튼 로직 (저장과 동일하지만 선택 체크)
-  const update = async () => {
-    if (!selectedCd) return alert("수정은 왼쪽에서 선택 후 가능합니다. (신규 저장은 '저장' 버튼)");
-    return save();
+  // ✅ [수정 1] 실제 URL 경로 '/자재관리/입고관리' 로 연결
+  const handleGoToInbound = (detailRow) => {
+    if (!mst.purchaseCd) return;
+
+    if (detailRow.status === 'p2' || detailRow.status === 'p3') {
+      if(window.confirm("입고 관리 화면으로 이동하시겠습니까?")) {
+          navigate(`/자재관리/입고관리?purchaseCd=${mst.purchaseCd}&status=${detailRow.status}`);
+      }
+    } else {
+      alert("확정(p2) 또는 입고완료(p3) 상태일 때만 이동할 수 있습니다.");
+    }
   };
 
   return (
@@ -220,21 +196,18 @@ export default function 발주관리() {
         <div className="button-group">
           <button className="btn new" onClick={reset}>신규</button>
           <button className="btn save" onClick={save}>저장</button>
-          {/* 상황에 따라 수정 버튼 숨기거나 저장과 통합 가능 */}
         </div>
       </div>
 
       <div className="search-bar purchase-toolbar">
         <input
           className="search-input"
-          placeholder="발주번호/거래처/담당자 검색"
+          placeholder="검색..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && fetchList()}
         />
-        <button className="btn" style={{ background: "#eee", color: "#333" }} onClick={fetchList}>
-          조회
-        </button>
+        <button className="btn" onClick={fetchList}>조회</button>
       </div>
 
       <div className="content-split">
@@ -244,11 +217,7 @@ export default function 발주관리() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: 50 }}>No</th>
-                  <th>발주번호</th>
-                  <th style={{ width: 110 }}>일자</th>
-                  <th style={{ width: 160 }}>거래처</th>
-                  <th style={{ width: 110 }}>담당자</th>
+                  <th>No</th><th>발주번호</th><th>일자</th><th>거래처</th><th>담당자</th>
                 </tr>
               </thead>
               <tbody>
@@ -257,22 +226,14 @@ export default function 발주관리() {
                     key={p.purchaseCd}
                     onClick={() => selectOne(p.purchaseCd)}
                     className={selectedCd === p.purchaseCd ? "selected" : ""}
-                    style={{ cursor: "pointer" }}
                   >
                     <td>{i + 1}</td>
                     <td className="mono">{p.purchaseCd}</td>
                     <td>{p.purchaseDt}</td>
                     <td>{custName(p.custCd)}</td>
-                    <td>{p.custEmp ?? ""}</td>
+                    <td>{p.custEmp}</td>
                   </tr>
                 ))}
-                {list.length === 0 && (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: "center", color: "#888" }}>
-                      데이터가 없습니다.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -281,47 +242,32 @@ export default function 발주관리() {
             <div className="section-header">
               발주 상세 {selectedCd ? <span className="mono">({selectedCd})</span> : ""}
             </div>
-
             <div className="table-wrapper">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 60 }}>SEQ</th>
-                    <th>품목</th>
-                    <th style={{ width: 110 }}>수량</th>
-                    <th style={{ width: 100 }}>상태</th>
-                    <th>비고</th>
+                    <th>SEQ</th><th>품목</th><th>수량</th><th>상태</th><th>비고</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {!selectedCd ? (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: "center", color: "#888" }}>
-                        좌측에서 발주를 선택하세요.
-                      </td>
-                    </tr>
-                  ) : details.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: "center", color: "#888" }}>
-                        상세 데이터가 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    details.map((d) => (
-                      // 백엔드 @EmbeddedId 구조 반영 (d.id.seqNo)
-                      <tr key={`${d?.id?.purchaseCd}-${d?.id?.seqNo}`}>
-                        <td className="mono">{d?.id?.seqNo}</td>
-                        <td>{itemName(d.itemCd)}</td>
-                        <td>{d.purchaseQty}</td>
-                        <td>
-                          <span className={`pill ${d.status}`}>
+                  {details.map((d) => (
+                    <tr 
+                      key={`${d?.id?.purchaseCd}-${d?.id?.seqNo}`}
+                      onDoubleClick={() => handleGoToInbound(d)}
+                      style={{ cursor: "pointer" }}
+                      title="더블클릭 시 입고관리 이동"
+                    >
+                      <td className="mono">{d?.id?.seqNo}</td>
+                      <td>{itemName(d.itemCd)}</td>
+                      <td>{d.purchaseQty}</td>
+                      <td>
+                        <span className={`pill ${d.status}`}>
                             {STATUS.find((x) => x.v === d.status)?.t ?? d.status}
-                          </span>
-                        </td>
-                        <td>{d.remark ?? ""}</td>
-                      </tr>
-                    ))
-                  )}
+                        </span>
+                      </td>
+                      <td>{d.remark}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -332,119 +278,80 @@ export default function 발주관리() {
         <div className="detail-section">
           <div className="form-grid">
             <label className="form-label">발주번호</label>
-            <input
-              className="form-input mono"
-              value={mst.purchaseCd}
-              readOnly 
-              placeholder="자동 생성"
-              style={{ backgroundColor: "#f5f5f5" }}
-            />
-
-            <label className="form-label">발주일자 *</label>
-            <input
-              className="form-input"
-              type="date"
-              value={mst.purchaseDt}
-              onChange={(e) => setMst({ ...mst, purchaseDt: e.target.value })}
-            />
-
-            <label className="form-label">거래처 *</label>
-            <select
-              className="form-input"
-              value={mst.custCd}
-              onChange={(e) => setMst({ ...mst, custCd: e.target.value })}
-            >
-              <option value="">-- 선택 --</option>
-              {custs.map((c) => (
-                <option key={c.custCd} value={c.custCd}>
-                  {c.custCd} - {c.custNm}
-                </option>
-              ))}
+            <input className="form-input mono" value={mst.purchaseCd} readOnly style={{background:"#f5f5f5"}} />
+            <label className="form-label">발주일자</label>
+            <input type="date" className="form-input" value={mst.purchaseDt} onChange={(e) => setMst({...mst, purchaseDt:e.target.value})} />
+            <label className="form-label">거래처</label>
+            <select className="form-input" value={mst.custCd} onChange={(e) => setMst({...mst, custCd:e.target.value})}>
+              <option value="">선택</option>{custs.map(c=><option key={c.custCd} value={c.custCd}>{c.custNm}</option>)}
             </select>
-
             <label className="form-label">담당자</label>
-            <input
-              className="form-input"
-              value={mst.custEmp}
-              onChange={(e) => setMst({ ...mst, custEmp: e.target.value })}
-            />
-
+            <input className="form-input" value={mst.custEmp} onChange={(e) => setMst({...mst, custEmp:e.target.value})} />
             <label className="form-label">비고</label>
-            <input
-              className="form-input"
-              value={mst.remark}
-              onChange={(e) => setMst({ ...mst, remark: e.target.value })}
-            />
+            <input className="form-input" value={mst.remark} onChange={(e) => setMst({...mst, remark:e.target.value})} />
           </div>
 
           <div className="section-header purchase-detail-header">
-            <span>발주 상세 (편집)</span>
-            <button className="btn" style={{ background: "#eee", color: "#333" }} onClick={addRow}>
-              + 행추가
-            </button>
+            <span>발주 상세 (편집) <span style={{fontSize:'0.8em', color:'#666'}}>* 더블클릭 시 입고화면 이동</span></span>
+            <button className="btn" onClick={addRow}>+ 행추가</button>
           </div>
 
           <div className="purchase-detail-editor">
-            {editRows.map((r, idx) => (
-              // ✅ [수정 5] key에 index 대신 고유 ID(_uiId) 사용 (필수)
-              <div className="detail-row" key={r._uiId}>
-                <div className="detail-row-top">
-                  <div className="detail-row-title">상세 {idx + 1}</div>
-                  <button
-                    className="btn delete"
-                    style={{ padding: "4px 10px" }}
-                    onClick={() => delRow(idx)}
-                    disabled={editRows.length === 1}
-                  >
-                    삭제
-                  </button>
+            {editRows.map((r, idx) => {
+              const isNew = !r._seqNo; // 신규 여부
+              const isLocked = r.status === 'p3'; // 입고완료 여부
+
+              return (
+                <div 
+                  className={`detail-row ${isLocked ? 'locked-row' : ''}`}
+                  key={r._uiId}
+                  onDoubleClick={() => handleGoToInbound(r)}
+                  title="더블클릭하여 입고 관리 화면으로 이동"
+                  style={{ 
+                    border: isLocked ? "1px solid #c3e6cb" : "1px solid #ddd", 
+                    backgroundColor: isLocked ? "#f4fff4" : "#fff",
+                    cursor: "pointer"
+                  }}
+                >
+                  <div className="detail-row-top">
+                    <div className="detail-row-title">
+                      상세 {idx + 1} 
+                      {isLocked && <span style={{color:'green', marginLeft:'5px'}}>✔ 입고완료</span>}
+                      {isNew && <span style={{color:'#1890ff', marginLeft:'5px', fontSize:'0.8em'}}>🆕 신규</span>}
+                    </div>
+                    <button className="btn delete" onClick={()=>delRow(idx)} disabled={editRows.length===1 || isLocked} style={{opacity: isLocked?0.3:1}}>삭제</button>
+                  </div>
+                  <div className="form-grid purchase-detail-grid">
+                    <label className="form-label">품목</label>
+                    <select className="form-input" value={r.itemCd} onChange={(e)=>setRow(idx,"itemCd",e.target.value)} disabled={isLocked}>
+                      <option value="">선택</option>{items.map(it=><option key={it.itemCd} value={it.itemCd}>{it.itemNm}</option>)}
+                    </select>
+                    
+                    <label className="form-label">수량</label>
+                    <input type="number" className="form-input" value={r.purchaseQty} onChange={(e)=>setRow(idx,"purchaseQty",e.target.value)} disabled={isLocked} />
+                    
+                    <label className="form-label">상태</label>
+                    {/* ✅ [수정 2] '입고완료(p3)' 선택 불가 (리스트에서 숨김) */}
+                    <select 
+                      className="form-input" 
+                      value={r.status} 
+                      onChange={(e)=>setRow(idx,"status",e.target.value)} 
+                      disabled={isLocked || isNew} 
+                      style={{backgroundColor: (isLocked || isNew) ? '#f5f5f5' : 'white'}}
+                    >
+                      {STATUS.map(s => {
+                         // 현재 행이 이미 'p3'가 아니라면, 드롭다운 옵션에서 'p3'를 아예 렌더링하지 않음
+                         if (s.v === 'p3' && r.status !== 'p3') return null;
+                         return <option key={s.v} value={s.v}>{s.t}</option>;
+                      })}
+                    </select>
+                    
+                    <label className="form-label">비고</label>
+                    <input className="form-input" value={r.remark} onChange={(e)=>setRow(idx,"remark",e.target.value)} disabled={isLocked} />
+                  </div>
                 </div>
-
-                <div className="form-grid purchase-detail-grid">
-                  <label className="form-label">품목 *</label>
-                  <select
-                    className="form-input"
-                    value={r.itemCd}
-                    onChange={(e) => setRow(idx, "itemCd", e.target.value)}
-                  >
-                    <option value="">-- 선택 --</option>
-                    {items.map((it) => (
-                      <option key={it.itemCd} value={it.itemCd}>
-                        {it.itemCd} - {it.itemNm}
-                      </option>
-                    ))}
-                  </select>
-
-                  <label className="form-label">수량 *</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    value={r.purchaseQty}
-                    onChange={(e) => setRow(idx, "purchaseQty", e.target.value)}
-                  />
-
-                  <label className="form-label">상태</label>
-                  <select
-                    className="form-input"
-                    value={r.status || "p1"}
-                    onChange={(e) => setRow(idx, "status", e.target.value)}
-                  >
-                    {STATUS.map((s) => (
-                      <option key={s.v} value={s.v}>
-                        {s.t}
-                      </option>
-                    ))}
-                  </select>
-
-                  <label className="form-label">비고</label>
-                  <input
-                    className="form-input"
-                    value={r.remark}
-                    onChange={(e) => setRow(idx, "remark", e.target.value)}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

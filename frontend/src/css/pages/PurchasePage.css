@@ -324,3 +324,41 @@
 .purchase-detail-header button:hover {
   background-color: #e9ecef;
 }
+
+.pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 54px; /* 너비 고정으로 깔끔하게 */
+}
+
+/* p1: 등록 - 회색 (대기중 느낌) */
+.pill.p1 {
+    background-color: #f5f5f5;
+    color: #666666;
+    border: 1px solid #d9d9d9;
+}
+
+/* p2: 발주확정 - 파란색 (진행중 느낌) */
+.pill.p2 {
+    background-color: #e6f7ff;
+    color: #1890ff;
+    border: 1px solid #91d5ff;
+}
+
+/* p3: 입고완료 - 초록색 (성공/완료 느낌) */
+.pill.p3 {
+    background-color: #f6ffed;
+    color: #52c41a;
+    border: 1px solid #b7eb8f;
+}
+
+/* p9: 취소 - 빨간색 (경고/삭제 느낌) */
+.pill.p9 {
+    background-color: #fff1f0;
+    color: #f5222d;
+    border: 1px solid #ffa39e;
+}
