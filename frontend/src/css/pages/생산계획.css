@@ -1,0 +1,297 @@
+/* 전체 배경/레이아웃: BomPage.css 느낌(연한 회색 + 흰 패널) */
+.prodplan-container {
+  width: 100%;
+  height: 100%;
+  background: #f5f5f5;
+  padding: 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 상단 헤더 */
+.prodplan-header {
+  background: #ffffff;
+  border: 1px solid #ccc;
+  height: 50px;
+  flex-shrink: 0;
+  padding: 5px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prodplan-title {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.prodplan-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prodplan-stage {
+  font-size: 12px;
+  color: #444;
+}
+
+/* 2x2 그리드 */
+.prodplan-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 10px;
+}
+
+/* 패널 공통 */
+.pp-panel {
+  background: #ffffff;
+  border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pp-panel-header {
+  background: #e9ecef;
+  border-bottom: 1px solid #ccc;
+  padding: 8px 10px;
+  font-weight: bold;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pp-panel-body {
+  padding: 10px;
+  min-height: 0;
+}
+
+/* 영역 지정 */
+.pp-a { grid-column: 1; grid-row: 1; }
+.pp-c { grid-column: 2; grid-row: 1; }
+.pp-b { grid-column: 1; grid-row: 2; }
+.pp-d { grid-column: 2; grid-row: 2; }
+
+/* 스크롤 */
+.pp-scroll {
+  overflow: auto;
+}
+
+/* 입력/버튼 */
+.pp-input {
+  height: 30px;
+  border: 1px solid #bbb;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 3px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+textarea.pp-input {
+  height: auto;
+  padding: 8px 10px;
+}
+
+.pp-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pp-btn {
+  padding: 5px 12px;
+  border: 1px solid #aaa;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 12px;
+  background: #f8f9fa;
+}
+
+.pp-btn:hover {
+  background: #f0f0f0;
+}
+
+.pp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-save {
+  background: #d4edda;
+  border-color: #c3e6cb;
+}
+
+.btn-next {
+  background: #cce5ff;
+  border-color: #b8daff;
+}
+
+.btn-cancel {
+  background: #f8d7da;
+  border-color: #f5c6cb;
+}
+
+/* 테이블 */
+.pp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.pp-table th {
+  background: #f1f3f5;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.pp-table td {
+  padding: 6px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  text-align: center;
+}
+
+.pp-table tr:hover {
+  background: #f8f9fa;
+}
+
+.pp-table tr.selected {
+  background: #e7f5ff;
+}
+
+.pp-table-scroll {
+  max-height: 100%;
+  overflow: auto;
+  border: 1px solid #eee;
+}
+
+/* 빈 상태 */
+.pp-empty {
+  padding: 16px;
+  color: #777;
+  text-align: center;
+}
+
+/* 폼 */
+.pp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pp-row {
+  display: flex;
+  gap: 10px;
+}
+
+.pp-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pp-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.pp-message {
+  background: #fffacd;
+  border: 1px solid #e5d98b;
+  padding: 8px 10px;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+.pp-hint {
+  color: #666;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* 단계 리스트 */
+.pp-steps {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #444;
+  line-height: 1.8;
+}
+
+.pp-steps li.on {
+  font-weight: 800;
+  color: #2b579a;
+}
+
+.pp-steps li.cancel {
+  font-weight: 800;
+  color: #b00020;
+}
+
+.pp-mini {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #444;
+  border-top: 1px dashed #ddd;
+  padding-top: 10px;
+}
+
+/* D영역 꾸밈 */
+.pp-section-title {
+  font-weight: 800;
+  font-size: 13px;
+  margin: 2px 0 8px;
+}
+
+.pp-summaryline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #333;
+  padding: 6px 8px;
+  background: #f8f9fa;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.pp-warning {
+  margin-top: 8px;
+  color: #b00020;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.pp-card {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  padding: 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #333;
+}
+
+.pp-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #444;
+}
