@@ -12,7 +12,11 @@ export default function 시스템로그() {
           return res.json();
       })
       .then(data => {
-          setLogs(Array.isArray(data) ? data : []);
+          // 최신순 정렬 (logNo 내림차순 가정)
+          const sorted = Array.isArray(data) 
+            ? data.sort((a, b) => b.logNo.localeCompare(a.logNo)) 
+            : [];
+          setLogs(sorted);
       })
       .catch(err => {
           console.error(err);
@@ -29,7 +33,7 @@ export default function 시스템로그() {
   // 행위(Action) 배지
   const getActionBadge = (type) => {
     const style = {
-      padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+      padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold',
       color: '#fff', display: 'inline-block', minWidth: '40px', textAlign: 'center'
     };
     switch(type) {
@@ -58,41 +62,38 @@ export default function 시스템로그() {
                 <table className="data-table">
                     <thead style={{ position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>
                         <tr>
-                            <th style={{padding:'12px', width:'180px'}}>로그번호</th>
-                            <th style={{padding:'12px', width:'150px'}}>일시</th>
-                            
-                            {/* 🔥 [추가] 사용자 컬럼 */}
+                            <th style={{padding:'12px', width:'140px'}}>로그번호</th>
+                            <th style={{padding:'12px', width:'140px'}}>일시</th>
                             <th style={{padding:'12px', width:'100px'}}>사용자</th>
-
-                            <th style={{padding:'12px', width:'150px'}}>메뉴</th>
-                            <th style={{padding:'12px', width:'80px'}}>유형</th>
-                            <th style={{padding:'12px'}}>대상 정보</th>
+                            <th style={{padding:'12px', width:'120px'}}>메뉴</th>
+                            <th style={{padding:'12px', width:'80px'}}>행위</th>
+                            <th style={{padding:'12px'}}>대상 정보 / 상세 내용</th>
                         </tr>
                     </thead>
                     <tbody>
                         {Array.isArray(logs) && logs.map((log) => (
                             <tr key={log.logNo}>
                                 {/* 로그번호 */}
-                                <td style={{textAlign:'center', color:'#888', fontSize:'13px'}}>
+                                <td style={{textAlign:'center', color:'#888', fontSize:'12px'}}>
                                   {log.logNo}
                                 </td>
                                 
                                 {/* 일시 */}
-                                <td style={{textAlign:'center'}}>
+                                <td style={{textAlign:'center', fontSize:'13px'}}>
                                   {formatDate(log.logDt)}
                                 </td>
 
-                                {/* 🔥 [추가] 사용자 ID 표시 */}
+                                {/* 사용자 (뱃지 스타일) */}
                                 <td style={{textAlign:'center'}}>
                                     <span style={{
                                         background: '#e3f2fd', 
                                         color: '#1565c0', 
-                                        padding: '3px 8px', 
-                                        borderRadius: '12px', 
-                                        fontSize: '12px', 
+                                        padding: '2px 8px', 
+                                        borderRadius: '10px', 
+                                        fontSize: '11px', 
                                         fontWeight: 'bold'
                                     }}>
-                                        {log.logUser || 'system'}
+                                        {log.logUser || 'anonymous'}
                                     </span>
                                 </td>
 
@@ -106,15 +107,31 @@ export default function 시스템로그() {
                                     {getActionBadge(log.actionType)}
                                 </td>
 
-                                {/* 대상 정보 */}
+                                {/* 대상 정보 및 상세 내용 */}
                                 <td style={{padding:'10px 15px'}}>
-                                    <span style={{fontWeight:'bold', color:'#333'}}>
+                                    {/* 1. 대상 이름 (예: 삼성전자) */}
+                                    <div style={{fontWeight:'bold', color:'#333', fontSize:'14px'}}>
                                       {log.targetName || '-'}
-                                    </span>
-                                    {log.targetKey && (
-                                      <span style={{color:'#999', fontSize:'12px', marginLeft:'8px'}}>
-                                        ({log.targetKey})
-                                      </span>
+                                      {log.targetKey && (
+                                        <span style={{color:'#999', fontSize:'12px', marginLeft:'6px', fontWeight:'normal'}}>
+                                          ({log.targetKey})
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* 2. 상세 내용 (예: 주문품목: 삼각김밥) - 있을 때만 표시 */}
+                                    {log.changeContents && (
+                                      <div style={{
+                                        marginTop: '4px',
+                                        fontSize: '12px',
+                                        color: '#555',
+                                        background: '#f9f9f9',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        border: '1px solid #eee'
+                                      }}>
+                                        📄 {log.changeContents}
+                                      </div>
                                     )}
                                 </td>
                             </tr>
@@ -123,7 +140,7 @@ export default function 시스템로그() {
                         {(!Array.isArray(logs) || logs.length === 0) && (
                             <tr>
                                 <td colSpan="6" style={{textAlign:'center', padding:'50px', color:'#999'}}>
-                                    데이터가 없습니다.
+                                    로그 데이터가 없습니다.
                                 </td>
                             </tr>
                         )}

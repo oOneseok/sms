@@ -1,8 +1,10 @@
 package com.example.sms.service;
 
+import com.example.sms.entity.ItemMst; // ItemMst import
 import com.example.sms.entity.PurchaseDetIdMst;
 import com.example.sms.entity.PurchaseDetMst;
 import com.example.sms.entity.PurchaseMst;
+import com.example.sms.repository.ItemRepository; // ItemRepository import
 import com.example.sms.repository.PurchaseDetMstRepository;
 import com.example.sms.repository.PurchaseMstRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,7 +24,8 @@ public class PurchaseService {
 
     private final PurchaseMstRepository purchaseMstRepository;
     private final PurchaseDetMstRepository purchaseDetMstRepository;
-    private final LogService logService; // ✅ 로그 서비스 추가
+    private final ItemRepository itemRepository; // ✅ 품목 이름 조회를 위해 추가
+    private final LogService logService;         // ✅ 로그 서비스
 
     @Transactional(readOnly = true)
     public List<PurchaseMst> getPurchaseList() {
@@ -40,7 +44,7 @@ public class PurchaseService {
     }
 
     /**
-     * 발주 저장 (로그 추가됨)
+     * 발주 저장 (품목명 로그 기록 추가)
      */
     @Transactional
     public String savePurchase(
@@ -55,8 +59,6 @@ public class PurchaseService {
         if (details == null || details.isEmpty()) throw new IllegalArgumentException("상세는 최소 1건 이상 필요합니다.");
 
         boolean hasCd = (purchaseCd != null && !purchaseCd.isBlank());
-
-        // ✅ 로그용 액션 타입 ("등록" or "수정")
         String actionType = "등록";
 
         if (!hasCd) {
@@ -68,7 +70,7 @@ public class PurchaseService {
         boolean exists = purchaseMstRepository.existsById(purchaseCd);
 
         if (exists) {
-            actionType = "수정"; // 이미 존재하면 수정
+            actionType = "수정";
             purchaseDetMstRepository.deleteByIdPurchaseCd(purchaseCd);
         }
 
@@ -81,31 +83,49 @@ public class PurchaseService {
         mst.setRemark(remark);
         purchaseMstRepository.save(mst);
 
+        // ✅ 품목 이름을 수집할 리스트 생성
+        List<String> purchasedItemNames = new ArrayList<>();
+
         // 상세 저장
         int seq = 1;
         for (PurchaseDetMst d : details) {
-            if (d.getItemCd() == null || d.getItemCd().isBlank()) {
-                throw new IllegalArgumentException("품목코드는 필수입니다.");
-            }
-            if (d.getPurchaseQty() == null || d.getPurchaseQty() <= 0) {
-                throw new IllegalArgumentException("발주수량은 1 이상이어야 합니다.");
-            }
+            String itemCd = d.getItemCd();
+
+            if (itemCd == null || itemCd.isBlank()) throw new IllegalArgumentException("품목코드는 필수입니다.");
+            if (d.getPurchaseQty() == null || d.getPurchaseQty() <= 0) throw new IllegalArgumentException("발주수량은 1 이상이어야 합니다.");
+
+            // ✅ 품목 정보 조회 및 이름 수집
+            ItemMst itemMst = itemRepository.findById(itemCd)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 품목: " + itemCd));
+
+            purchasedItemNames.add(itemMst.getItemNm());
 
             PurchaseDetIdMst id = new PurchaseDetIdMst();
             id.setPurchaseCd(purchaseCd);
             id.setSeqNo(seq++);
 
             d.setId(id);
-
-            if (d.getStatus() == null || d.getStatus().isBlank()) {
-                d.setStatus("p1");
-            }
+            if (d.getStatus() == null || d.getStatus().isBlank()) d.setStatus("p1");
 
             purchaseDetMstRepository.save(d);
         }
 
-        // ✅ 로그 저장 (메뉴명, 행위, ID, 내용/거래처)
-        logService.saveLog("발주 관리", actionType, purchaseCd, "거래처: " + (custCd == null ? "-" : custCd));
+        // ✅ 로그 메시지 생성 (예: "발주품목: 원단A 외 2건")
+        String itemLogInfo;
+        if (purchasedItemNames.isEmpty()) {
+            itemLogInfo = "품목 없음";
+        } else {
+            if (purchasedItemNames.size() > 3) {
+                itemLogInfo = "발주품목: " + purchasedItemNames.get(0) + " 외 " + (purchasedItemNames.size() - 1) + "건";
+            } else {
+                itemLogInfo = "발주품목: " + String.join(", ", purchasedItemNames);
+            }
+        }
+
+        // ✅ 로그 저장 (상세 내용 포함)
+        logService.saveLog("발주 관리", actionType, purchaseCd,
+                "거래처: " + (custCd == null ? "-" : custCd),
+                itemLogInfo);
 
         return purchaseCd;
     }
@@ -144,11 +164,10 @@ public class PurchaseService {
     @Transactional(readOnly = true)
     public List<PurchaseDetMst> getWaitingForInboundList() {
         return purchaseDetMstRepository.findAll().stream()
-                .filter(det -> "p2".equals(det.getStatus())) // p2: 발주확정
+                .filter(det -> "p2".equals(det.getStatus()))
                 .collect(Collectors.toList());
     }
 
-    // 상태 변경 (입고 완료 시 호출)
     @Transactional
     public void updateDetailStatus(String purchaseCd, Integer seqNo, String newStatus) {
         PurchaseDetIdMst id = new PurchaseDetIdMst();
