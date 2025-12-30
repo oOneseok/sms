@@ -68,9 +68,7 @@ public class DataInitializer implements CommandLineRunner {
         createMenu("M3004", "입출고 이력", 4, "📜", "M30", "/material/history");
 
         // 4. 생산관리 (M40) 하위
-        createMenu("M4001", "생산 계획", 1, "📅", "M40", "/production/plan");
-        createMenu("M4002", "생산 실적", 2, "🏭", "M40", "/production/result");
-        createMenu("M4003", "자재 소요량(MRP)", 3, "📊", "M40", "/production/mrp");
+        createMenu("M4001", "생산 실적 관리", 1, "📅", "M40", "/production/plan");
 
         // 5. 시스템 관리 (M90) 하위
         createMenu("M9001", "시스템 로그", 1, "💻", "M90", "/system/log");
