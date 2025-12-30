@@ -21,6 +21,7 @@ public class PurchaseService {
 
     private final PurchaseMstRepository purchaseMstRepository;
     private final PurchaseDetMstRepository purchaseDetMstRepository;
+    private final LogService logService; // ✅ 로그 서비스 추가
 
     @Transactional(readOnly = true)
     public List<PurchaseMst> getPurchaseList() {
@@ -39,10 +40,7 @@ public class PurchaseService {
     }
 
     /**
-     * ✅ 저장 규칙(요구사항 반영)
-     * - purchaseCd가 비어있으면: 자동생성 신규
-     * - purchaseCd가 있고 DB에 있으면: 수정(기존 상세 삭제 후 재저장)
-     * - purchaseCd가 있고 DB에 없으면: 신규(사용자가 입력한 코드로 신규 저장)
+     * 발주 저장 (로그 추가됨)
      */
     @Transactional
     public String savePurchase(
@@ -58,8 +56,10 @@ public class PurchaseService {
 
         boolean hasCd = (purchaseCd != null && !purchaseCd.isBlank());
 
+        // ✅ 로그용 액션 타입 ("등록" or "수정")
+        String actionType = "등록";
+
         if (!hasCd) {
-            // ✅ 자동생성 신규
             purchaseCd = generatePurchaseCd(purchaseDt);
         } else {
             purchaseCd = purchaseCd.trim();
@@ -67,12 +67,12 @@ public class PurchaseService {
 
         boolean exists = purchaseMstRepository.existsById(purchaseCd);
 
-        // ✅ 수정이면 기존 상세 삭제
         if (exists) {
+            actionType = "수정"; // 이미 존재하면 수정
             purchaseDetMstRepository.deleteByIdPurchaseCd(purchaseCd);
         }
 
-        // ✅ 헤더 저장(신규/수정 공통)
+        // 헤더 저장
         PurchaseMst mst = new PurchaseMst();
         mst.setPurchaseCd(purchaseCd);
         mst.setPurchaseDt(purchaseDt);
@@ -81,7 +81,7 @@ public class PurchaseService {
         mst.setRemark(remark);
         purchaseMstRepository.save(mst);
 
-        // ✅ 상세 저장(신규/수정 공통) : seq는 항상 1부터 재부여
+        // 상세 저장
         int seq = 1;
         for (PurchaseDetMst d : details) {
             if (d.getItemCd() == null || d.getItemCd().isBlank()) {
@@ -103,6 +103,9 @@ public class PurchaseService {
 
             purchaseDetMstRepository.save(d);
         }
+
+        // ✅ 로그 저장 (메뉴명, 행위, ID, 내용/거래처)
+        logService.saveLog("발주 관리", actionType, purchaseCd, "거래처: " + (custCd == null ? "-" : custCd));
 
         return purchaseCd;
     }
@@ -140,14 +143,12 @@ public class PurchaseService {
 
     @Transactional(readOnly = true)
     public List<PurchaseDetMst> getWaitingForInboundList() {
-        // Repository에 findByStatus 메소드가 없다면, findAll 후 필터링하거나 JPQL 사용
-        // 여기서는 간단하게 모든 발주 상세를 가져와서 stream으로 필터링하는 방식 예시 (데이터 많으면 Repository 쿼리로 변경 권장)
         return purchaseDetMstRepository.findAll().stream()
                 .filter(det -> "p2".equals(det.getStatus())) // p2: 발주확정
                 .collect(Collectors.toList());
     }
 
-    // [추가] 상태 변경 (입고 완료 시 호출)
+    // 상태 변경 (입고 완료 시 호출)
     @Transactional
     public void updateDetailStatus(String purchaseCd, Integer seqNo, String newStatus) {
         PurchaseDetIdMst id = new PurchaseDetIdMst();

@@ -25,6 +25,11 @@ public class ItemInOutController {
     private final PurchaseService purchaseService;
     private final OrderService orderService;
 
+    @GetMapping
+    public ResponseEntity<List<ItemInOutDto>> getList() {
+        return ResponseEntity.ok(itemInOutService.getInOutList());
+    }
+
     // 1. 입고 대기 목록 (발주 확정 건) 조회
     @GetMapping("/waiting-purchase")
     public ResponseEntity<List<PurchaseDetMst>> getWaitingPurchases() {
@@ -95,8 +100,4 @@ public class ItemInOutController {
         return ResponseEntity.ok(itemInOutService.getCurrentStock(whCd, itemCd));
     }
 
-    @GetMapping
-    public ResponseEntity<List<ItemInOutDto>> getList() {
-        return ResponseEntity.ok(itemInOutService.getInOutList());
-    }
 }

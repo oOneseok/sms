@@ -23,6 +23,7 @@ public class OrderService {
     private final OrderMstRepository orderMstRepository;
     private final OrderDetMstRepository orderDetMstRepository;
     private final ItemRepository itemRepository;
+    private final LogService logService; // ✅ 로그 서비스 추가
 
     @Transactional(readOnly = true)
     public List<OrderMst> getOrderList() {
@@ -37,11 +38,9 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderDetMst> getOrderDetails(String orderCd) {
-        // 순번(SeqNo) 기준으로 정렬하여 조회
         return orderDetMstRepository.findByIdOrderCdOrderByIdSeqNoAsc(orderCd);
     }
 
-    // 출고 대기 목록 조회 (확정 o2)
     @Transactional(readOnly = true)
     public List<OrderDetMst> getWaitingForOutboundList() {
         return orderDetMstRepository.findAll().stream()
@@ -49,12 +48,11 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ [수정] 상태 변경 (PK인 SeqNo로 정확하게 찾기)
     @Transactional
     public void updateDetailStatus(String orderCd, Integer seqNo, String newStatus) {
         OrderDetIdMst id = new OrderDetIdMst();
         id.setOrderCd(orderCd);
-        id.setSeqNo(seqNo); // ✅ ItemCd 대신 SeqNo 사용
+        id.setSeqNo(seqNo);
 
         OrderDetMst det = orderDetMstRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("주문 상세 정보를 찾을 수 없습니다."));
@@ -64,7 +62,7 @@ public class OrderService {
     }
 
     /**
-     * 주문 저장
+     * 주문 저장 (로그 추가)
      */
     @Transactional
     public String saveOrder(
@@ -80,6 +78,9 @@ public class OrderService {
 
         boolean hasCd = (orderCd != null && !orderCd.isBlank());
 
+        // ✅ 로그용 액션 타입
+        String actionType = "등록";
+
         if (!hasCd) {
             orderCd = generateOrderCd(orderDt);
         } else {
@@ -88,8 +89,8 @@ public class OrderService {
 
         boolean exists = orderMstRepository.existsById(orderCd);
 
-        // 수정 시 기존 상세 삭제
         if (exists) {
+            actionType = "수정";
             orderDetMstRepository.deleteByIdOrderCd(orderCd);
         }
 
@@ -105,8 +106,6 @@ public class OrderService {
         // 상세 저장
         int seq = 1;
         for (OrderDetMst d : details) {
-
-            // 프론트에서 보낸 itemCd를 바로 사용
             String itemCd = d.getItemCd();
 
             if (itemCd == null || itemCd.isBlank()) {
@@ -117,16 +116,15 @@ public class OrderService {
                 throw new IllegalArgumentException("주문수량은 1 이상이어야 합니다.");
             }
 
-            // 품목 존재 체크
             itemRepository.findById(itemCd)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 품목: " + itemCd));
 
             OrderDetIdMst id = new OrderDetIdMst();
             id.setOrderCd(orderCd);
-            id.setSeqNo(seq++); // 순번 자동 채번
+            id.setSeqNo(seq++);
 
             d.setId(id);
-            d.setItemCd(itemCd); // 일반 컬럼에 저장
+            d.setItemCd(itemCd);
 
             if (d.getStatus() == null || d.getStatus().isBlank()) {
                 d.setStatus("o1");
@@ -135,9 +133,15 @@ public class OrderService {
             orderDetMstRepository.save(d);
         }
 
+        // ✅ 로그 저장
+        logService.saveLog("주문 관리", actionType, orderCd, "거래처: " + (custCd == null ? "-" : custCd));
+
         return orderCd;
     }
 
+    /**
+     * 주문 삭제 (로그 추가)
+     */
     @Transactional
     public void deleteOrder(String orderCd) {
         if (!orderMstRepository.existsById(orderCd)) {
@@ -145,6 +149,9 @@ public class OrderService {
         }
         orderDetMstRepository.deleteByIdOrderCd(orderCd);
         orderMstRepository.deleteById(orderCd);
+
+        // ✅ 삭제 로그
+        logService.saveLog("주문 관리", "삭제", orderCd, "주문 삭제");
     }
 
     private String generateOrderCd(LocalDate orderDt) {

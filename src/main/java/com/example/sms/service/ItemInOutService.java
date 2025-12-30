@@ -5,6 +5,7 @@ import com.example.sms.dto.StockHistoryDto;
 import com.example.sms.entity.*;
 import com.example.sms.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,8 @@ public class ItemInOutService {
     // 상태 변경용 Service
     private final PurchaseService purchaseService;
     private final OrderService orderService;
+
+    private final LogService logService; // ✅ 로그 서비스 추가
 
     // ID 생성 유틸
     private String generateId(String prefix) {
@@ -100,14 +103,16 @@ public class ItemInOutService {
         itemStockHisRepository.save(history);
     }
 
-    // 입고 처리 (기존 유지)
+    /**
+     * ✅ [입고] 발주 기반 입고 처리
+     */
     @Transactional
     public void registerInboundFromPurchase(String purchaseCd, Integer seqNo, String toWhCd, String itemCd, Integer qty, String remark) {
         String ioCd = generateId("IO");
         String ioDt = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-        ItemMst itemMst = itemRepository.findById(itemCd).orElseThrow(() -> new IllegalArgumentException("품목 오류"));
-        WhMst toWh = whMstRepository.findById(toWhCd).orElseThrow(() -> new IllegalArgumentException("창고 오류"));
+        ItemMst itemMst = itemRepository.findById(itemCd).orElseThrow(() -> new IllegalArgumentException("품목 오류: " + itemCd));
+        WhMst toWh = whMstRepository.findById(toWhCd).orElseThrow(() -> new IllegalArgumentException("창고 오류: " + toWhCd));
 
         ItemIo itemIo = new ItemIo();
         itemIo.setIoCd(ioCd);
@@ -117,22 +122,26 @@ public class ItemInOutService {
         itemIo.setQty(qty);
         itemIo.setToWh(toWh);
         itemIo.setRemark(remark);
+
         itemIo.setRefTb("TB_PURCHASE");
         itemIo.setRefCd(purchaseCd);
         itemIo.setRefSeq(seqNo);
 
         itemIoRepository.save(itemIo);
+
         updateStock(itemCd, toWhCd, BigDecimal.valueOf(qty), true);
         saveStockHistory(ioCd, itemCd, toWhCd, "IN", BigDecimal.valueOf(qty), "TB_PURCHASE", purchaseCd);
         purchaseService.updateDetailStatus(purchaseCd, seqNo, "p3");
+
+        // ✅ 입고 로그 저장
+        logService.saveLog("입고 관리", "등록", ioCd, "발주번호: " + purchaseCd + ", 품목: " + itemCd);
     }
 
     /**
-     * ✅ [수정] 주문(Order) 기반 출고 처리 (seqNo 추가)
+     * ✅ [출고] 주문 기반 출고 처리
      */
     @Transactional
     public void registerOutboundFromOrder(String orderCd, Integer seqNo, String itemCd, String fromWhCd, Integer qty, String remark) {
-
         // 1. 재고 확인
         ItemStockId stockId = ItemStockId.builder().itemCd(itemCd).whCd(fromWhCd).build();
         ItemStock currentStock = itemStockRepository.findById(stockId)
@@ -160,7 +169,7 @@ public class ItemInOutService {
 
         itemIo.setRefTb("TB_ORDER");
         itemIo.setRefCd(orderCd);
-        itemIo.setRefSeq(seqNo); // ✅ DB에 순번도 같이 저장
+        itemIo.setRefSeq(seqNo);
 
         itemIoRepository.save(itemIo);
 
@@ -170,12 +179,16 @@ public class ItemInOutService {
         // 4. 이력 저장
         saveStockHistory(ioCd, itemCd, fromWhCd, "OUT", BigDecimal.valueOf(qty).negate(), "TB_ORDER", orderCd);
 
-        // 5. 주문 상세 상태 변경 (o2 -> o3)
-        // ✅ 여기서 itemCd 대신 seqNo를 넘김
+        // 5. 주문 상태 업데이트
         orderService.updateDetailStatus(orderCd, seqNo, "o3");
+
+        // ✅ 출고 로그 저장
+        logService.saveLog("출고 관리", "등록", ioCd, "주문번호: " + orderCd + ", 품목: " + itemCd);
     }
 
-    // 이력 조회
+    /**
+     * ✅ 재고 이력 조회
+     */
     public List<StockHistoryDto> getStockHistory(String type, String code) {
         List<ItemStockHis> list;
         if ("ITEM".equals(type)) {
@@ -204,30 +217,31 @@ public class ItemInOutService {
         }).collect(Collectors.toList());
     }
 
-    // ✅ [추가] 현재고 조회
+    /**
+     * ✅ 전체 입출고 내역 조회
+     */
+    public List<ItemInOutDto> getInOutList() {
+        return itemIoRepository.findAll(Sort.by(Sort.Direction.DESC, "ioDt")).stream()
+                .map(io -> ItemInOutDto.builder()
+                        .ioCd(io.getIoCd())
+                        .ioDt(io.getIoDt())
+                        .ioType(io.getIoType())
+                        .itemCd(io.getItemMst().getItemCd())
+                        .qty(io.getQty())
+                        .fromWhCd(io.getFromWh() != null ? io.getFromWh().getWhCd() : null)
+                        .toWhCd(io.getToWh() != null ? io.getToWh().getWhCd() : null)
+                        .refCd(io.getRefCd())
+                        .remark(io.getRemark())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * ✅ 현재고 조회
+     */
     public BigDecimal getCurrentStock(String whCd, String itemCd) {
         return itemStockRepository.findById(new ItemStockId(itemCd, whCd))
                 .map(ItemStock::getStockQty)
                 .orElse(BigDecimal.ZERO);
-    }
-
-    public List<ItemInOutDto> getInOutList() {
-        // ItemIoRepository에서 전체 데이터를 날짜 내림차순(최신순)으로 조회
-        // (만약 findAllByOrderByIoDtDesc가 없다면 ItemIoRepository에 추가 필요)
-        return itemIoRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "ioDt")).stream()
-                .map(io -> ItemInOutDto.builder()
-                        .ioCd(io.getIoCd())
-                        .ioDt(io.getIoDt())
-                        .ioType(io.getIoType()) // "IN" or "OUT"
-                        .itemCd(io.getItemMst().getItemCd())
-                        // .itemNm(io.getItemMst().getItemNm()) // 필요시 주석 해제
-                        .qty(io.getQty())
-                        // 입고(IN)면 도착창고(toWh), 출고(OUT)면 출발창고(fromWh)가 중요
-                        .fromWhCd(io.getFromWh() != null ? io.getFromWh().getWhCd() : null)
-                        .toWhCd(io.getToWh() != null ? io.getToWh().getWhCd() : null)
-                        .refCd(io.getRefCd()) // 주문번호 or 발주번호
-                        .remark(io.getRemark())
-                        .build())
-                .collect(Collectors.toList());
     }
 }
