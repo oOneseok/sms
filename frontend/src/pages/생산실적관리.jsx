@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import "../css/pages/생산계획.css";
 
 /**
- * 사용 API (현재 너희 프로젝트 기준)
+ * 사용 API
  * - 제품목록: GET /api/item  (ITEM_FLAG=02만 제품)
  * - BOM:     GET /api/bom/{pItemCd}
  * - 재고:    GET /api/stocks?itemCd=xxx&size=1000   (창고별 재고)
- *
- * ※ 생산계획/실적/입출고 저장 API는 아직 없다고 보고 UI만 만들어둠 (TODO 표시)
+ * - 생산계획: POST/PUT/GET /api/prods
+ * - 생산실적+입고: POST /api/prods/{prodNo}/results (applyToStockAndIo=true)
  */
 
 const API = {
@@ -15,6 +15,7 @@ const API = {
   bom: "http://localhost:8080/api/bom",
   stocks: "http://localhost:8080/api/stocks",
   whs: "http://localhost:8080/api/whs",
+  prods: "http://localhost:8080/api/prods",
 };
 
 const safeNum = (v) => (v === null || v === undefined || v === "" ? 0 : Number(v));
@@ -68,20 +69,24 @@ export default function 생산계획() {
 
   // ====== 화면 C: 계획 입력 ======
   const [plan, setPlan] = useState({
-    prodNo: "",          // 문자열
-    prodDt: todayYYYYMMDD(), // date
+    prodNo: "",
+    prodDt: todayYYYYMMDD(),
     itemCd: "",
     itemNm: "",
     planQty: 0,
     status: "01",
     remark: "",
-    storeWhCd: "",       // 입고용(완제품 들어갈 창고)
+    storeWhCd: "",
+
+    // ✅ [추가] 생산완료 단계에서 입력할 불량수량
+    badQty: 0,
+    badRes: "",
   });
 
   // ====== BOM + MRP ======
-  const [bomRows, setBomRows] = useState([]);           // 원본 BOM
-  const [bomAgg, setBomAgg] = useState([]);             // 자재코드별 useQty 합산
-  // mrp[matCd] = { required, totals:{stock,alloc,avail}, rows:[{whCd,stockQty,allocQty,avail}] , ok }
+  const [bomRows, setBomRows] = useState([]);
+  const [bomAgg, setBomAgg] = useState([]);
+  // mrp[matCd] = { required, totals:{stockQty,allocQty,availQty,whCnt}, rows:[...] , ok }
   const [mrp, setMrp] = useState({});
   const [loadingMrp, setLoadingMrp] = useState(false);
 
@@ -107,6 +112,14 @@ export default function 생산계획() {
   const getItem = (itemCd) => itemMap.get(String(itemCd));
   const getItemNm = (itemCd) => getItem(itemCd)?.itemNm ?? getItem(itemCd)?.ITEM_NM ?? "";
   const getWhNm = (whCd) => whMap.get(String(whCd))?.whNm ?? whMap.get(String(whCd))?.WH_NM ?? "";
+
+  // ✅ 정상품 = 목표수량 - 불량수량 (음수 방지)
+  const goodQty = useMemo(() => {
+    const p = safeNum(plan.planQty);
+    const b = safeNum(plan.badQty);
+    const g = p - b;
+    return g < 0 ? 0 : g;
+  }, [plan.planQty, plan.badQty]);
 
   // ====== 로딩: 제품/창고 ======
   useEffect(() => {
@@ -170,7 +183,12 @@ export default function 생산계획() {
     const stockSum = mapped.reduce((a, c) => a + safeNum(c.stockQty), 0);
     const allocSum = mapped.reduce((a, c) => a + safeNum(c.allocQty), 0);
     return {
-      totals: { stockQty: stockSum, allocQty: allocSum, availQty: stockSum - allocSum, whCnt: mapped.length },
+      totals: {
+        stockQty: stockSum,
+        allocQty: allocSum,
+        availQty: stockSum - allocSum,
+        whCnt: mapped.length,
+      },
       rows: mapped,
     };
   };
@@ -191,7 +209,6 @@ export default function 생산계획() {
           const one = await fetchStocksByItem(matCd);
           const useQty = agg.find((x) => x.sItemCd === matCd)?.useQtySum ?? 0;
           const required = safeNum(useQty) * safeNum(planQty);
-
           const ok = Number(one?.totals?.availQty ?? 0) >= Number(required);
 
           return [
@@ -235,9 +252,11 @@ export default function 생산계획() {
       itemNm,
       status: "01",
       planQty: prev.planQty ?? 0,
+      badQty: 0,
+      badRes: "",
+      storeWhCd: "",
     }));
 
-    // planQty가 0이면 계산 의미가 없어서, 1로 임시 계산하지 않고 그냥 비워둠
     if (safeNum(plan.planQty) > 0) {
       await calcMrp(itemCd, safeNum(plan.planQty));
     } else {
@@ -253,7 +272,12 @@ export default function 생산계획() {
 
     setPlan((prev) => ({
       ...prev,
-      [name]: name === "planQty" ? (value === "" ? "" : Number(value)) : value,
+      [name]:
+        name === "planQty" || name === "badQty"
+          ? value === ""
+            ? ""
+            : Number(value)
+          : value,
     }));
   };
 
@@ -291,16 +315,9 @@ export default function 생산계획() {
     if (!plan.itemCd) return false;
     if (plan.status === "09" || plan.status === "05") return false;
 
-    // 01 -> 02 : 저장/확정 느낌 (가능)
     if (plan.status === "01") return true;
-
-    // 02 -> 03 : MRP 확인 완료는 "모든 자재 OK"일 때만
     if (plan.status === "02") return allMrpOk;
-
-    // 03 -> 04 : 생산중 진입
     if (plan.status === "03") return true;
-
-    // 04 -> 05 : 생산완료
     if (plan.status === "04") return true;
 
     return false;
@@ -319,9 +336,36 @@ export default function 생산계획() {
     if (!plan.prodDt) return alert("계획일자(PROD_DT)를 입력하세요. (date)");
     if (safeNum(plan.planQty) <= 0) return alert("계획수량(PLAN_QTY)을 1 이상 입력하세요.");
 
-    // TODO: 실제 저장 API 붙이면 여기서 POST
-    // 예) POST /api/prod  { prodNo, prodDt, itemCd, planQty, status, remark }
-    setMessage("✅ (UI) 생산계획 저장 처리됨 (실제 저장 API 연결 필요)");
+    const payload = {
+      prodNo: plan.prodNo,
+      prodDt: plan.prodDt,
+      itemCd: plan.itemCd,
+      planQty: Number(plan.planQty || 0),
+      status: plan.status || "01",
+      remark: plan.remark || "",
+    };
+
+    try {
+      const chk = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}`);
+      const exists = chk.ok;
+
+      const res = await fetch(exists ? `${API.prods}/${encodeURIComponent(plan.prodNo)}` : `${API.prods}`, {
+        method: exists ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`생산계획 저장 실패\n${txt}`);
+        return;
+      }
+
+      setMessage(`✅ 생산계획 DB 저장 완료 (${exists ? "수정" : "신규"})`);
+    } catch (e) {
+      console.error(e);
+      alert("생산계획 저장 중 오류");
+    }
   };
 
   // ====== 다음단계 ======
@@ -335,9 +379,13 @@ export default function 생산계획() {
 
     const ns = nextStatus;
     setPlan((p) => ({ ...p, status: ns }));
-    setMessage(`➡ 상태 변경: ${STATUS[plan.status]} → ${STATUS[ns]}`);
 
-    // TODO: 실제 저장 API 연결 시, 상태 업데이트도 서버에 반영
+    // ✅ 04 -> 05 넘어갈 때: 불량 입력은 05 화면에서 하도록 안내
+    if (plan.status === "04" && ns === "05") {
+      setMessage("✅ 생산완료로 변경됨. 불량 수량을 입력하고 정상품 수량으로 입고 처리하세요.");
+    } else {
+      setMessage(`➡ 상태 변경: ${STATUS[plan.status]} → ${STATUS[ns]}`);
+    }
   };
 
   // ====== 취소(언제든지) ======
@@ -347,20 +395,52 @@ export default function 생산계획() {
 
     setPlan((p) => ({ ...p, status: "09" }));
     setMessage("⛔ 취소 처리됨");
-
-    // TODO: 서버 상태도 09로 업데이트
   };
 
-  // ====== D 영역: 입고 처리(완제품 창고 입고 + IO_TYPE 기록) ======
+  // ====== D 영역: 입고 처리(정상품만 창고 입고 + IO_TYPE 기록) ======
   const handleStoreFinished = async () => {
     if (plan.status !== "05") return alert("생산완료(05) 상태에서만 입고 처리할 수 있어요.");
+    if (!plan.prodNo) return alert("PROD_NO가 없습니다.");
     if (!plan.storeWhCd) return alert("입고할 창고를 선택하세요.");
 
-    // TODO:
-    // 1) 완제품 재고 증가 (ItemStock에 +planQty)
-    // 2) IO_TYPE 기록 남기기
-    // 3) 완료 메시지/화면 처리
-    setMessage("✅ (UI) 입고 처리됨 (실제 입고/IO 기록 API 연결 필요)");
+    const pQty = safeNum(plan.planQty);
+    const bQty = safeNum(plan.badQty);
+    if (bQty < 0) return alert("불량 수량은 0 이상이어야 합니다.");
+    if (bQty > pQty) return alert("불량 수량이 목표수량(PLAN_QTY)보다 클 수 없습니다.");
+
+    const gQty = pQty - bQty;
+
+    if (gQty <= 0) {
+      if (!window.confirm("정상품 수량이 0입니다. 그래도 실적을 저장할까요? (입고는 0으로 반영됨)")) return;
+    }
+
+    try {
+      const res = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/results`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resultDt: plan.prodDt, // "YYYY-MM-DD"
+          whCd: plan.storeWhCd,
+          goodQty: Number(gQty || 0), // ✅ 정상품만 입고
+          badQty: Number(bQty || 0),
+          badRes: plan.badRes || null,
+          remark: plan.remark ? `생산완료 입고 / ${plan.remark}` : "생산완료 입고",
+          applyToStockAndIo: true,
+        }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`입고 처리 실패\n${txt}`);
+        return;
+      }
+
+      const data = await res.json().catch(() => null);
+      setMessage(`✅ DB 반영 완료 (정상품 ${gQty}, 불량 ${bQty}) / 실적 SEQ: ${data?.id?.seqNo ?? "-"}`);
+    } catch (e) {
+      console.error(e);
+      alert("입고 처리 중 오류");
+    }
   };
 
   // ====== D 영역: 선택된 자재 상세 ======
@@ -370,9 +450,11 @@ export default function 생산계획() {
     <div className="prodplan-container">
       {/* 상단 타이틀 */}
       <div className="prodplan-header">
-        <div className="prodplan-title">생산 실적 관리</div>
+        <div className="prodplan-title">생산 계획</div>
         <div className="prodplan-header-right">
-          <div className="prodplan-stage">현재: {STATUS[plan.status] ?? plan.status} / {stage}</div>
+          <div className="prodplan-stage">
+            현재: {STATUS[plan.status] ?? plan.status} / {stage}
+          </div>
           <button className="pp-btn btn-cancel" onClick={handleCancel} disabled={!plan.itemCd || plan.status === "09"}>
             취소
           </button>
@@ -522,7 +604,7 @@ export default function 생산계획() {
           </div>
         </section>
 
-        {/* B: 단계 표시(준비/MRP/생산중/완료/입고) */}
+        {/* B: 단계 표시 */}
         <section className="pp-panel pp-b">
           <div className="pp-panel-header">
             <div>🧭 진행 단계</div>
@@ -530,22 +612,26 @@ export default function 생산계획() {
 
           <div className="pp-panel-body">
             <ol className="pp-steps">
-              <li className={plan.status === "01" ? "on" : ""}>1) 준비</li>
-              <li className={plan.status === "02" || plan.status === "03" ? "on" : ""}>2) MRP (BOM/자재가능 여부)</li>
-              <li className={plan.status === "04" ? "on" : ""}>3) 생산중</li>
-              <li className={plan.status === "05" ? "on" : ""}>4) 생산완료</li>
-              <li className={plan.status === "05" ? "on" : ""}>5) 입고 + IO 기록</li>
+              <li className={plan.status === "01" ? "on" : ""}> 준비</li>
+              <li className={plan.status === "02" || plan.status === "03" ? "on" : ""}> MRP (BOM/자재가능 여부)</li>
+              <li className={plan.status === "04" ? "on" : ""}> 생산중</li>
+              <li className={plan.status === "05" ? "on" : ""}> 생산완료</li>
+              <li className={plan.status === "05" ? "on" : ""}> 입고 + IO 기록</li>
               <li className={plan.status === "09" ? "cancel" : ""}>취소(09)</li>
             </ol>
 
             <div className="pp-mini">
-              <div><b>MRP 결과:</b> {Object.keys(mrp).length === 0 ? "-" : allMrpOk ? "✅ 가능" : "❌ 부족"}</div>
-              <div><b>선택 자재:</b> {selectedMatCd ? `${selectedMatCd} (${getItemNm(selectedMatCd)})` : "-"}</div>
+              <div>
+                <b>MRP 결과:</b> {Object.keys(mrp).length === 0 ? "-" : allMrpOk ? "✅ 가능" : "❌ 부족"}
+              </div>
+              <div>
+                <b>선택 자재:</b> {selectedMatCd ? `${selectedMatCd} (${getItemNm(selectedMatCd)})` : "-"}
+              </div>
             </div>
           </div>
         </section>
 
-        {/* D: 상태별 상세 (MRP/생산중/완료/입고) */}
+        {/* D: 상태별 상세 */}
         <section className="pp-panel pp-d">
           <div className="pp-panel-header">
             <div>📌 상태별 상세</div>
@@ -559,7 +645,7 @@ export default function 생산계획() {
               <div className="pp-empty">취소된 계획입니다.</div>
             ) : (
               <>
-                {/* 준비/확정/대기 단계: MRP */}
+                {/* 준비/확정/대기: MRP */}
                 {(plan.status === "01" || plan.status === "02" || plan.status === "03") && (
                   <>
                     <div className="pp-section-title">MRP (BOM 기준 자재 필요수량 계산)</div>
@@ -597,9 +683,7 @@ export default function 생산계획() {
                                   onClick={() => setSelectedMatCd(matCd)}
                                   title="클릭하면 아래에 창고별 재고 상세가 나옵니다"
                                 >
-                                  <td style={{ fontWeight: 800, color: ok ? "#2e7d32" : "#d32f2f" }}>
-                                    {ok ? "✓" : "✕"}
-                                  </td>
+                                  <td style={{ fontWeight: 800, color: ok ? "#2e7d32" : "#d32f2f" }}>{ok ? "✓" : "✕"}</td>
                                   <td>{matCd}</td>
                                   <td style={{ textAlign: "left" }}>{getItemNm(matCd) || "-"}</td>
                                   <td style={{ textAlign: "right" }}>{row?.useQtyPerOne ?? m.useQtySum}</td>
@@ -614,7 +698,6 @@ export default function 생산계획() {
                       </div>
                     )}
 
-                    {/* 선택 자재 창고별 상세 */}
                     <div className="pp-section-title" style={{ marginTop: 12 }}>
                       선택 자재의 창고별 재고
                     </div>
@@ -629,9 +712,7 @@ export default function 생산계획() {
                           </span>
                           <span>
                             필요: <b>{selectedMrp.required}</b> / 가용:{" "}
-                            <b style={{ color: selectedMrp.ok ? "#2e7d32" : "#d32f2f" }}>
-                              {selectedMrp.totals.availQty}
-                            </b>
+                            <b style={{ color: selectedMrp.ok ? "#2e7d32" : "#d32f2f" }}>{selectedMrp.totals.availQty}</b>
                           </span>
                         </div>
 
@@ -682,48 +763,81 @@ export default function 생산계획() {
                   <>
                     <div className="pp-section-title">생산중(계획 재확인)</div>
                     <div className="pp-card">
-                      <div>제품: <b>{plan.itemCd}</b> {plan.itemNm ? `(${plan.itemNm})` : ""}</div>
-                      <div>계획수량: <b>{plan.planQty}</b></div>
-                      <div>계획일자: <b>{plan.prodDt}</b></div>
+                      <div>
+                        제품: <b>{plan.itemCd}</b> {plan.itemNm ? `(${plan.itemNm})` : ""}
+                      </div>
+                      <div>
+                        목표수량: <b>{plan.planQty}</b>
+                      </div>
+                      <div>
+                        계획일자: <b>{plan.prodDt}</b>
+                      </div>
                       <div>비고: {plan.remark || "-"}</div>
                     </div>
-                    <div className="pp-hint">※ 실제로는 여기서 작업지시/실적 등록 화면으로 연결하면 좋아.</div>
+                    <div className="pp-hint">※ “다음단계”로 생산완료(05)로 넘어가면 불량수량 입력 후 입고 처리합니다.</div>
                   </>
                 )}
 
-                {/* 생산완료 → 입고 */}
+                {/* 생산완료(05): 불량 입력 + 정상품 계산 + 입고 */}
                 {plan.status === "05" && (
                   <>
-                    <div className="pp-section-title">생산완료</div>
+                    <div className="pp-section-title">4) 생산완료 (불량 입력 → 정상품 계산)</div>
+
                     <div className="pp-card">
-                      ✅ 생산이 완료되었습니다. 이제 <b>완제품 입고</b>를 진행하세요.
+                      <div>
+                        목표수량(PLAN_QTY): <b>{safeNum(plan.planQty)}</b>
+                      </div>
+
+                      <div className="pp-row" style={{ gap: 8, marginTop: 10 }}>
+                        <div className="pp-field" style={{ flex: 1 }}>
+                          <label>불량 수량</label>
+                          <input
+                            className="pp-input"
+                            type="number"
+                            name="badQty"
+                            value={plan.badQty}
+                            min={0}
+                            onChange={handlePlanChange}
+                          />
+                        </div>
+
+                        <div className="pp-field" style={{ flex: 2 }}>
+                          <label>불량 사유(선택)</label>
+                          <input className="pp-input" name="badRes" value={plan.badRes} onChange={handlePlanChange} />
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 10 }}>
+                        정상품 = 목표수량 - 불량 = <b>{goodQty}</b>
+                        {safeNum(plan.badQty) > safeNum(plan.planQty) && (
+                          <span style={{ marginLeft: 8, color: "#d32f2f", fontWeight: 700 }}>
+                            (불량이 목표보다 큼)
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="pp-section-title" style={{ marginTop: 12 }}>
-                      5) 입고 처리(완제품을 창고에 넣기)
+                      5) 창고배정/입고 처리 (정상품 수량으로 입고)
                     </div>
 
                     <div className="pp-row" style={{ gap: 8 }}>
                       <div className="pp-field" style={{ flex: 1 }}>
                         <label>입고 창고 선택</label>
-                        <select
-                          className="pp-input"
-                          name="storeWhCd"
-                          value={plan.storeWhCd}
-                          onChange={handlePlanChange}
-                        >
+                        <select className="pp-input" name="storeWhCd" value={plan.storeWhCd} onChange={handlePlanChange}>
                           <option value="">-- 선택 --</option>
                           {whs.map((w) => (
                             <option key={w.whCd ?? w.WH_CD} value={w.whCd ?? w.WH_CD}>
-                              {w.whCd ?? w.WH_CD} {w.whNm ? `- ${w.whNm}` : w.WH_NM ? `- ${w.WH_NM}` : ""}
+                              {w.whCd ?? w.WH_CD}{" "}
+                              {w.whNm ? `- ${w.whNm}` : w.WH_NM ? `- ${w.WH_NM}` : ""}
                             </option>
                           ))}
                         </select>
                       </div>
 
                       <div className="pp-field" style={{ flex: 1 }}>
-                        <label>입고 수량</label>
-                        <input className="pp-input" value={plan.planQty} readOnly />
+                        <label>입고 수량(정상품)</label>
+                        <input className="pp-input" value={goodQty} readOnly />
                       </div>
                     </div>
 
@@ -734,10 +848,8 @@ export default function 생산계획() {
                     </div>
 
                     <div className="pp-hint" style={{ marginTop: 10 }}>
-                      TODO: 여기서<br />
-                      1) 완제품(ItemStock) 재고 +PLAN_QTY<br />
-                      2) IO_TYPE 입출고 이력 저장<br />
-                      을 서버 API로 연결하면 “끝”이야.
+                      - 불량을 입력하면 정상품이 자동 계산되고, <b>정상품 수량만</b> 창고에 입고됩니다.<br />
+                      - 서버에는 <b>GOOD_QTY / BAD_QTY</b> 둘 다 저장됩니다.
                     </div>
                   </>
                 )}

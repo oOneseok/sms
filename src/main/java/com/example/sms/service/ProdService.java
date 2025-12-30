@@ -18,12 +18,12 @@ public class ProdService {
     private final ProdRepository prodRepository;
     private final ProdResultRepository prodResultRepository;
 
-    private final ItemRepository itemRepository; // ItemMst repo (네가 이미 있음)
+    private final ItemRepository itemRepository; // ItemMst repo
     private final ItemStockRepository itemStockRepository;
     private final ItemStockHisRepository itemStockHisRepository;
 
     private final ItemIoRepository itemIoRepository;
-    private final WhMstRepository whMstRepository; // ✅ 너 프로젝트에 있을 거라 가정(없으면 만들어야 함)
+    private final WhMstRepository whMstRepository;
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
@@ -62,7 +62,7 @@ public class ProdService {
             throw new IllegalArgumentException("Already exists: " + prodNo);
         }
 
-        Prod saved = prodRepository.save(
+        return prodRepository.save(
                 Prod.builder()
                         .prodNo(prodNo)
                         .prodDt(body.getProdDt()) // 문자
@@ -72,7 +72,6 @@ public class ProdService {
                         .remark(body.getRemark())
                         .build()
         );
-        return saved;
     }
 
     @Transactional
@@ -80,11 +79,11 @@ public class ProdService {
         Prod old = prodRepository.findById(prodNo)
                 .orElseThrow(() -> new IllegalArgumentException("PROD not found: " + prodNo));
 
-        // itemCd 바꾸는 건 위험하니 막고 싶으면 여기서 제한하면 됨
+        // itemCd 변경 허용 시 검증
         String itemCd = (body.getItemCd() == null || body.getItemCd().isBlank()) ? old.getItemCd() : body.getItemCd();
         validateProductItem(itemCd);
 
-        Prod saved = prodRepository.save(
+        return prodRepository.save(
                 Prod.builder()
                         .prodNo(prodNo)
                         .prodDt(body.getProdDt() == null ? old.getProdDt() : body.getProdDt())
@@ -94,7 +93,6 @@ public class ProdService {
                         .remark(body.getRemark() == null ? old.getRemark() : body.getRemark())
                         .build()
         );
-        return saved;
     }
 
     @Transactional
@@ -102,7 +100,7 @@ public class ProdService {
         Prod old = prodRepository.findById(prodNo)
                 .orElseThrow(() -> new IllegalArgumentException("PROD not found: " + prodNo));
 
-        Prod saved = prodRepository.save(
+        return prodRepository.save(
                 Prod.builder()
                         .prodNo(old.getProdNo())
                         .prodDt(old.getProdDt())
@@ -112,10 +110,16 @@ public class ProdService {
                         .remark(remark == null ? old.getRemark() : remark)
                         .build()
         );
-        return saved;
     }
 
-    // ✅ 생산실적 등록 + (선택) 완제품 입고/기록까지 반영
+    /**
+     * 생산실적 등록 + (선택) 완제품 입고/IO/HIS/재고 반영까지 처리
+     * - applyToStockAndIo=true 일 때:
+     *   1) TB_ITEMSTOCK (완제품 재고 +GOOD_QTY)
+     *   2) TB_ITEMSTOCK_HIS 기록
+     *   3) TB_ITEM_IO 기록 (IO_TYPE=PROD_RESULT)
+     *   4) PROD 상태를 05로 업데이트
+     */
     @Transactional
     public ProdResult createResultAndOptionallyReceive(String prodNo,
                                                        LocalDate resultDt,
@@ -133,6 +137,27 @@ public class ProdService {
             throw new IllegalArgumentException("Canceled PROD cannot be processed.");
         }
 
+        // ✅ [추가] 입고 반영이면 창고 필수
+        if (applyToStockAndIo) {
+            if (whCd == null || whCd.isBlank()) {
+                throw new IllegalArgumentException("WH_CD is required when applyToStockAndIo=true");
+            }
+        }
+
+        // ✅ [추가] 수량 검증 (음수 방지 + 계획수량 초과 방지)
+        BigDecimal planQty = prod.getPlanQty() == null ? BigDecimal.ZERO : prod.getPlanQty();
+        BigDecimal g = goodQty == null ? BigDecimal.ZERO : goodQty;
+        BigDecimal b = badQty == null ? BigDecimal.ZERO : badQty;
+
+        if (g.signum() < 0 || b.signum() < 0) {
+            throw new IllegalArgumentException("GOOD_QTY/BAD_QTY must be >= 0");
+        }
+
+        // 필요하면 아래를 "!= 0"로 바꿔서 (정상품+불량=계획수량) 강제 가능
+        if (g.add(b).compareTo(planQty) > 0) {
+            throw new IllegalArgumentException("GOOD_QTY + BAD_QTY cannot exceed PLAN_QTY");
+        }
+
         Integer nextSeq = prodResultRepository.maxSeqByProdNo(prodNo) + 1;
 
         ProdResult savedResult = prodResultRepository.save(
@@ -140,8 +165,8 @@ public class ProdService {
                         .id(new ProdResultId(prodNo, nextSeq))
                         .resultDt(resultDt == null ? LocalDate.now() : resultDt)
                         .whCd(whCd)
-                        .goodQty(goodQty == null ? BigDecimal.ZERO : goodQty)
-                        .badQty(badQty == null ? BigDecimal.ZERO : badQty)
+                        .goodQty(g)
+                        .badQty(b)
                         .badRes(badRes)
                         .remark(remark)
                         .build()
@@ -161,13 +186,16 @@ public class ProdService {
             );
 
             BigDecimal add = savedResult.getGoodQty() == null ? BigDecimal.ZERO : savedResult.getGoodQty();
-            BigDecimal newStock = (cur.getStockQty() == null ? BigDecimal.ZERO : cur.getStockQty()).add(add);
+            BigDecimal curStock = cur.getStockQty() == null ? BigDecimal.ZERO : cur.getStockQty();
+            BigDecimal curAlloc = cur.getAllocQty() == null ? BigDecimal.ZERO : cur.getAllocQty();
+
+            BigDecimal newStock = curStock.add(add);
 
             itemStockRepository.save(
                     ItemStock.builder()
                             .id(stockId)
                             .stockQty(newStock)
-                            .allocQty(cur.getAllocQty() == null ? BigDecimal.ZERO : cur.getAllocQty())
+                            .allocQty(curAlloc)
                             .build()
             );
 
@@ -188,20 +216,19 @@ public class ProdService {
                             .build()
             );
 
-            // 3) TB_ITEM_IO 기록 (네 ItemIo는 ManyToOne이라 엔티티 로드 필요)
+            // 3) TB_ITEM_IO 기록 (ItemIo.qty가 Integer라서 정수만 허용)
             ItemMst item = itemRepository.findById(itemCd)
                     .orElseThrow(() -> new IllegalArgumentException("ITEM not found: " + itemCd));
             WhMst toWh = whMstRepository.findById(whCd)
                     .orElseThrow(() -> new IllegalArgumentException("WH not found: " + whCd));
 
-            // ItemIo.qty가 Integer라서, 소수점 있으면 예외 처리
             if (add.stripTrailingZeros().scale() > 0) {
                 throw new IllegalArgumentException("GOOD_QTY must be integer for TB_ITEM_IO.QTY (현재: " + add + ")");
             }
 
             ItemIo io = new ItemIo();
             io.setIoCd(newIoCd());
-            io.setIoDt(LocalDate.now().toString()); // 네 엔티티가 String(10)이라 yyyy-mm-dd
+            io.setIoDt(LocalDate.now().toString()); // yyyy-MM-dd
             io.setIoType("PROD_RESULT");
             io.setItemMst(item);
             io.setQty(add.intValueExact());
@@ -213,7 +240,7 @@ public class ProdService {
             io.setRemark("생산실적 입고");
             itemIoRepository.save(io);
 
-            // 4) 상태 업데이트 (생산완료 05로)
+            // 4) PROD 상태 업데이트 (생산완료 05)
             prodRepository.save(
                     Prod.builder()
                             .prodNo(prod.getProdNo())
