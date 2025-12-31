@@ -20,8 +20,6 @@ const STATUS = {
   "09": "취소",
 };
 
-const ORDER = ["01", "02", "03", "04", "05"];
-
 function todayYYYYMMDD() {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -64,8 +62,13 @@ export default function 생산계획() {
     status: "01",
     remark: "",
     storeWhCd: "",
-    badQty: 0,       // ✅ 불량 입력
-    badRes: "",      // ✅ 불량내역
+
+    // ✅ 불량
+    badQty: 0,
+    badRes: "",
+
+    // ✅ (추가) 생산완료 실적 저장용 창고 (TB_PROD_RESULT.WH_CD)
+    resultWhCd: "",
   });
 
   const goodQty = useMemo(() => {
@@ -210,6 +213,7 @@ export default function 생산계획() {
       planQty: prev.planQty ?? 0,
       badQty: 0,
       badRes: "",
+      resultWhCd: "", // ✅ 초기화
     }));
 
     if (safeNum(plan.planQty) > 0) {
@@ -294,9 +298,6 @@ export default function 생산계획() {
     }
   };
 
-  // -----------------------
-  // ✅ 단계 전환(핵심)
-  // -----------------------
   const goStatus = async (ns) => {
     setPlan((p) => ({ ...p, status: ns }));
     await saveProdToDb(ns);
@@ -308,7 +309,7 @@ export default function 생산계획() {
     if (safeNum(plan.planQty) <= 0) return alert("PLAN_QTY 필요");
 
     try {
-      // 01 -> 02 (확정)
+      // 01 -> 02
       if (plan.status === "01") {
         await goStatus("02");
         setMessage("➡ 01 → 02 (확정됨)");
@@ -318,15 +319,15 @@ export default function 생산계획() {
       // 02 -> 03 (예약)
       if (plan.status === "02") {
         if (!allMrpOk) return alert("MRP 부족입니다. 부족 자재는 발주로 연결하세요.");
-        // reserve 실행
+
         const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/reserve`, { method: "POST" });
         if (!r.ok) {
           const txt = await r.text().catch(() => "");
           return alert(`예약 실패\n${txt}`);
         }
+
         await goStatus("03");
         setMessage("➡ 02 → 03 (예약 완료)");
-        // reserve 이후 재고가 변하니 MRP 재계산
         await calcMrp(plan.itemCd, safeNum(plan.planQty));
         return;
       }
@@ -344,8 +345,9 @@ export default function 생산계획() {
         return;
       }
 
-      // 04 -> 05 (생산완료: 불량 입력)
+      // 04 -> 05 (생산완료)
       if (plan.status === "04") {
+        if (!plan.resultWhCd) return alert("생산완료 실적창고(WH_CD)를 선택하세요.");
         if (safeNum(plan.badQty) < 0) return alert("불량수량은 0 이상이어야 합니다.");
         if (goodQty < 0) return alert("정상품 수량이 음수입니다.");
 
@@ -354,7 +356,7 @@ export default function 생산계획() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             resultDt: plan.prodDt,
-            whCd: plan.resultWhCd,
+            whCd: plan.resultWhCd,     // ✅ 핵심: WH_CD 전달
             goodQty: goodQty,
             badQty: Number(plan.badQty || 0),
             badRes: plan.badRes || null,
@@ -372,26 +374,39 @@ export default function 생산계획() {
         setMessage(`➡ 04 → 05 (생산완료) 정상품=${goodQty}, 불량=${safeNum(plan.badQty)}`);
         return;
       }
-
     } catch (e) {
       console.error(e);
       alert(`단계 전환 오류\n${String(e.message || e)}`);
     }
   };
 
-  // ✅ 뒤로가기: 03 -> 02 (예약해제 후)
-  const handlePrevFromWait = async () => {
-    if (plan.status !== "03") return;
-    if (!window.confirm("생산대기(예약)를 해제하고 이전단계(확정)로 돌아갈까요?")) return;
+  // ✅ 이전단계 버튼: 02에서도 보이게
+  // - 02 -> 01 : 그냥 상태만 내리면 됨
+  // - 03 -> 02 : 예약해제 API 호출 필요(기존 그대로)
+  const handlePrev = async () => {
+    try {
+      if (plan.status === "02") {
+        await goStatus("01");
+        setMessage("⬅ 02 → 01 (준비 단계로 이동)");
+        return;
+      }
 
-    const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/unreserve`, { method: "POST" });
-    if (!r.ok) {
-      const txt = await r.text().catch(() => "");
-      return alert(`예약해제 실패\n${txt}`);
+      if (plan.status === "03") {
+        if (!window.confirm("생산대기(예약)를 해제하고 이전단계(확정)로 돌아갈까요?")) return;
+
+        const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/unreserve`, { method: "POST" });
+        if (!r.ok) {
+          const txt = await r.text().catch(() => "");
+          return alert(`예약해제 실패\n${txt}`);
+        }
+        await goStatus("02");
+        setMessage("⬅ 03 → 02 (예약해제 완료)");
+        await calcMrp(plan.itemCd, safeNum(plan.planQty));
+      }
+    } catch (e) {
+      console.error(e);
+      alert(`이전단계 오류\n${String(e.message || e)}`);
     }
-    await goStatus("02");
-    setMessage("⬅ 03 → 02 (예약해제 완료)");
-    await calcMrp(plan.itemCd, safeNum(plan.planQty));
   };
 
   const handleCancel = async () => {
@@ -415,7 +430,6 @@ export default function 생산계획() {
     }
   };
 
-  // ✅ 완제품 입고(05에서)
   const handleReceive = async () => {
     if (plan.status !== "05") return alert("생산완료(05)에서만 입고 가능합니다.");
     if (!plan.storeWhCd) return alert("입고 창고 선택 필요");
@@ -447,11 +461,14 @@ export default function 생산계획() {
         <div className="prodplan-title">생산 계획</div>
         <div className="prodplan-header-right">
           <div className="prodplan-stage">현재: {STATUS[plan.status] ?? plan.status}</div>
-          {plan.status === "03" && (
-            <button className="pp-btn" onClick={handlePrevFromWait}>
+
+          {/* ✅ 02,03에서 이전단계 버튼 표시 */}
+          {(plan.status === "02" || plan.status === "03") && (
+            <button className="pp-btn" onClick={handlePrev}>
               이전단계
             </button>
           )}
+
           <button className="pp-btn btn-cancel" onClick={handleCancel} disabled={!plan.itemCd || plan.status === "09"}>
             취소
           </button>
@@ -553,7 +570,7 @@ export default function 생산계획() {
                 </div>
               </div>
 
-              {/* ✅ 생산중(04)에서 불량 입력 */}
+              {/* ✅ 생산중(04)에서 불량 + 실적창고 선택 */}
               {plan.status === "04" && (
                 <>
                   <div className="pp-row">
@@ -570,6 +587,20 @@ export default function 생산계획() {
                     <div className="pp-field">
                       <label>불량내역(BAD_RES)</label>
                       <input className="pp-input" name="badRes" value={plan.badRes} onChange={handlePlanChange} />
+                    </div>
+                  </div>
+
+                  <div className="pp-row">
+                    <div className="pp-field">
+                      <label>생산완료 실적창고(WH_CD)</label>
+                      <select className="pp-input" name="resultWhCd" value={plan.resultWhCd} onChange={handlePlanChange}>
+                        <option value="">-- 선택 --</option>
+                        {whs.map((w) => (
+                          <option key={w.whCd ?? w.WH_CD} value={w.whCd ?? w.WH_CD}>
+                            {w.whCd ?? w.WH_CD} {w.whNm ? `- ${w.whNm}` : w.WH_NM ? `- ${w.WH_NM}` : ""}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </>
@@ -711,6 +742,8 @@ export default function 생산계획() {
               <div>제품: <b>{plan.itemCd}</b> {plan.itemNm ? `(${plan.itemNm})` : ""}</div>
               <div>계획수량: <b>{plan.planQty}</b></div>
               <div>불량: <b>{safeNum(plan.badQty)}</b> / 정상품: <b>{goodQty}</b></div>
+              <div>실적창고(04→05): <b>{plan.resultWhCd || "-"}</b></div>
+              <div>입고창고(05): <b>{plan.storeWhCd || "-"}</b></div>
             </div>
           </div>
         </section>
