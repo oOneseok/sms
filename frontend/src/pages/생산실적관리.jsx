@@ -11,16 +11,14 @@ const API = {
 
 const safeNum = (v) => (v === null || v === undefined || v === "" ? 0 : Number(v));
 
-const STATUS = {
-  "01": "준비(기획중)",
-  "02": "확정됨(MRP준비)",
-  "03": "생산대기(예약완료)",
-  "04": "생산중(자재소모)",
-  "05": "생산완료(입고대기)",
+const STATUS_LABEL = {
+  "01": "준비(기획)",
+  "02": "확정(MRP)",
+  "03": "생산예약",
+  "04": "생산중",
+  "05": "생산완료",
   "09": "취소",
 };
-
-const ORDER = ["01", "02", "03", "04", "05"];
 
 function todayYYYYMMDD() {
   const d = new Date();
@@ -50,76 +48,39 @@ function aggregateBom(bomRows) {
 export default function 생산계획() {
   const [items, setItems] = useState([]);
   const [whs, setWhs] = useState([]);
-
   const [products, setProducts] = useState([]);
   const [productSearch, setProductSearch] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [plan, setPlan] = useState({
-    prodNo: "",
-    prodDt: todayYYYYMMDD(),
-    itemCd: "",
-    itemNm: "",
-    planQty: 0,
-    status: "01",
-    remark: "",
-    storeWhCd: "",
-    badQty: 0,       // ✅ 불량 입력
-    badRes: "",      // ✅ 불량내역
+    prodNo: "", prodDt: todayYYYYMMDD(), itemCd: "", itemNm: "", planQty: 0,
+    status: "01", remark: "", badQty: 0, badRes: "",
   });
+
+  const [bomRows, setBomRows] = useState([]);
+  const [bomAgg, setBomAgg] = useState([]);
+  const [mrp, setMrp] = useState({});
+  const [loadingMrp, setLoadingMrp] = useState(false);
+  const [selectedMatCd, setSelectedMatCd] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [manualAlloc, setManualAlloc] = useState({});
+  const [receiveLines, setReceiveLines] = useState([{ whCd: "", qty: 0 }]);
+
+  const [showLog, setShowLog] = useState(false);
+  const [prodList, setProdList] = useState([]);
+  
+  const [detailLogs, setDetailLogs] = useState([]); 
+  const [isReceived, setIsReceived] = useState(false);
 
   const goodQty = useMemo(() => {
     const g = safeNum(plan.planQty) - safeNum(plan.badQty);
     return g < 0 ? 0 : g;
   }, [plan.planQty, plan.badQty]);
 
-  const [bomRows, setBomRows] = useState([]);
-  const [bomAgg, setBomAgg] = useState([]);
-  const [mrp, setMrp] = useState({});
-  const [loadingMrp, setLoadingMrp] = useState(false);
-
-  const [selectedMatCd, setSelectedMatCd] = useState("");
-  const [message, setMessage] = useState("");
-
-  const itemMap = useMemo(() => {
-    const m = new Map();
-    items.forEach((it) => m.set(String(it.itemCd ?? it.ITEM_CD), it));
-    return m;
-  }, [items]);
-
-  const whMap = useMemo(() => {
-    const m = new Map();
-    whs.forEach((w) => m.set(String(w.whCd ?? w.WH_CD), w));
-    return m;
-  }, [whs]);
-
-  const getItem = (itemCd) => itemMap.get(String(itemCd));
-  const getItemNm = (itemCd) => getItem(itemCd)?.itemNm ?? getItem(itemCd)?.ITEM_NM ?? "";
-  const getWhNm = (whCd) => whMap.get(String(whCd))?.whNm ?? whMap.get(String(whCd))?.WH_NM ?? "";
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch(API.items);
-        const d = await r.json();
-        const rows = Array.isArray(d) ? d : [];
-        setItems(rows);
-        setProducts(rows.filter((x) => String(x.itemFlag ?? x.ITEM_FLAG) === "02"));
-      } catch {
-        setItems([]);
-        setProducts([]);
-      }
-
-      try {
-        const r = await fetch(API.whs);
-        const d = await r.json();
-        const rows = Array.isArray(d) ? d : Array.isArray(d?.content) ? d.content : [];
-        setWhs(rows);
-      } catch {
-        setWhs([]);
-      }
-    })();
-  }, []);
+  const totalReceiveQty = useMemo(() => {
+    return receiveLines.reduce((sum, line) => sum + safeNum(line.qty), 0);
+  }, [receiveLines]);
 
   const visibleProducts = useMemo(() => {
     const kw = productSearch.trim().toLowerCase();
@@ -131,16 +92,62 @@ export default function 생산계획() {
     });
   }, [products, productSearch]);
 
+  const selectedMrp = selectedMatCd ? mrp[selectedMatCd] : null;
+  const allMrpOk = useMemo(() => {
+    const keys = Object.keys(mrp);
+    if (keys.length === 0) return false;
+    return keys.every((k) => mrp[k]?.ok === true);
+  }, [mrp]);
+
+  // ✅ 03(예약) 이상이면 기본정보 수정 불가
+  const isPlanLocked = plan.status >= "03";
+  const isFullyLocked = plan.status === "05" && isReceived;
+
+  // --- Helpers ---
+  const itemMap = useMemo(() => {
+    const m = new Map();
+    items.forEach((it) => m.set(String(it.itemCd ?? it.ITEM_CD), it));
+    return m;
+  }, [items]);
+  const whMap = useMemo(() => {
+    const m = new Map();
+    whs.forEach((w) => m.set(String(w.whCd ?? w.WH_CD), w));
+    return m;
+  }, [whs]);
+
+  const getItemNm = (itemCd) => itemMap.get(String(itemCd))?.itemNm ?? "";
+  const getWhNm = (whCd) => whMap.get(String(whCd))?.whNm ?? "";
+
+  // --- Initial Data ---
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(API.items);
+        const d = await r.json();
+        const rows = Array.isArray(d) ? d : [];
+        setItems(rows);
+        setProducts(rows.filter((x) => String(x.itemFlag ?? x.ITEM_FLAG) === "02"));
+      } catch { setItems([]); }
+
+      try {
+        const r = await fetch(API.whs);
+        const d = await r.json();
+        setWhs(Array.isArray(d) ? d : []);
+      } catch { setWhs([]); }
+    })();
+  }, []);
+
+  // --- Logic ---
   const fetchBom = async (pItemCd) => {
     const r = await fetch(`${API.bom}/${encodeURIComponent(pItemCd)}`);
-    const d = await r.json();
-    return Array.isArray(d) ? d : [];
+    return await r.json();
   };
 
   const fetchStocksByItem = async (itemCd) => {
     const r = await fetch(`${API.stocks}?itemCd=${encodeURIComponent(itemCd)}&size=1000`);
     const d = await r.json();
     const rows = Array.isArray(d) ? d : Array.isArray(d?.content) ? d.content : [];
+    
     const mapped = rows.map((x) => {
       const whCd = x?.id?.whCd ?? "";
       const stockQty = safeNum(x?.stockQty);
@@ -161,12 +168,10 @@ export default function 생산계획() {
     try {
       const bom = await fetchBom(pItemCd);
       setBomRows(bom);
-
       const agg = aggregateBom(bom);
       setBomAgg(agg);
 
       const uniqMat = agg.map((x) => x.sItemCd);
-
       const results = await Promise.all(
         uniqMat.map(async (matCd) => {
           const one = await fetchStocksByItem(matCd);
@@ -180,541 +185,510 @@ export default function 생산계획() {
           ];
         })
       );
-
       const next = {};
       results.forEach(([matCd, v]) => (next[matCd] = v));
       setMrp(next);
     } catch (e) {
       console.error(e);
-      setBomRows([]);
-      setBomAgg([]);
       setMrp({});
     } finally {
       setLoadingMrp(false);
     }
   };
 
+  const fetchDetailLogs = async (prodNo) => {
+    try {
+        const res = await fetch(`${API.prods}/${encodeURIComponent(prodNo)}/logs`);
+        if(res.ok) {
+            const logs = await res.json();
+            setDetailLogs(logs);
+            const hasReceived = logs.some(l => l.ioType === "PROD_RESULT");
+            setIsReceived(hasReceived);
+            
+            // 예약 정보 복구 (수동할당값 복원)
+            const reserved = logs.filter(l => l.ioType === "RESERVE");
+            const restored = {};
+            reserved.forEach(log => {
+                const iCd = log.itemMst?.itemCd || log.itemCd;
+                const wCd = log.toWh?.whCd || log.whCd;
+                const qty = log.qty;
+                if(iCd && wCd) {
+                    if(!restored[iCd]) restored[iCd] = {};
+                    restored[iCd][wCd] = (restored[iCd][wCd] || 0) + qty;
+                }
+            });
+            setManualAlloc(restored);
+        }
+    } catch(e) { console.error(e); }
+  };
+
+  // --- Handlers ---
   const handleSelectProduct = async (p) => {
+    if (isPlanLocked) return alert("진행 중인 계획은 제품을 변경할 수 없습니다.");
+
     setSelectedProduct(p);
     setSelectedMatCd("");
     setMessage("");
+    setManualAlloc({}); 
+    setIsReceived(false);
+    setDetailLogs([]);
+    setReceiveLines([{ whCd: "", qty: 0 }]); 
 
     const itemCd = String(p.itemCd ?? "");
-    const itemNm = String(p.itemNm ?? "");
-
     setPlan((prev) => ({
       ...prev,
       itemCd,
-      itemNm,
+      itemNm: String(p.itemNm ?? ""),
       status: "01",
       planQty: prev.planQty ?? 0,
-      badQty: 0,
-      badRes: "",
+      prodNo: "", 
     }));
-
     if (safeNum(plan.planQty) > 0) {
       await calcMrp(itemCd, safeNum(plan.planQty));
     } else {
-      setBomRows([]);
-      setBomAgg([]);
       setMrp({});
     }
   };
 
   const handlePlanChange = (e) => {
     const { name, value } = e.target;
+    if (isFullyLocked) return;
+    if (isPlanLocked && (name === 'planQty' || name === 'prodDt' || name === 'prodNo')) return;
+
     setPlan((prev) => ({
       ...prev,
-      [name]:
-        name === "planQty" || name === "badQty"
-          ? value === ""
-            ? ""
-            : Number(value)
-          : value,
+      [name]: (name === "planQty" || name === "badQty") ? (value === "" ? "" : Number(value)) : value,
     }));
   };
 
   useEffect(() => {
     if (!selectedProduct) return;
     const qty = safeNum(plan.planQty);
-    if (qty <= 0) {
-      setMrp({});
-      return;
-    }
-    calcMrp(selectedProduct.itemCd, qty);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (qty <= 0) { setMrp({}); return; }
+    const timer = setTimeout(() => calcMrp(selectedProduct.itemCd, qty), 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line
   }, [plan.planQty, selectedProduct?.itemCd]);
 
-  const allMrpOk = useMemo(() => {
-    const keys = Object.keys(mrp);
-    if (keys.length === 0) return false;
-    return keys.every((k) => mrp[k]?.ok === true);
-  }, [mrp]);
-
-  // -----------------------
-  // ✅ DB 저장 (POST/PUT)
-  // -----------------------
-  const saveProdToDb = async (nextStatus) => {
-    const payload = {
-      prodNo: plan.prodNo,
-      prodDt: plan.prodDt,
-      itemCd: plan.itemCd,
-      planQty: Number(plan.planQty || 0),
-      status: nextStatus ?? plan.status,
-      remark: plan.remark || "",
-    };
-
-    const chk = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}`);
-    const exists = chk.ok;
-
-    const res = await fetch(exists ? `${API.prods}/${encodeURIComponent(plan.prodNo)}` : `${API.prods}`, {
-      method: exists ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(txt || "save failed");
-    }
+  const handleAllocChange = (matCd, whCd, val) => {
+    if (isPlanLocked) return; 
+    setManualAlloc(prev => ({
+      ...prev,
+      [matCd]: { ...(prev[matCd] || {}), [whCd]: Number(val) }
+    }));
   };
 
-  const handleSavePlan = async () => {
-    if (!plan.itemCd) return alert("제품을 선택하세요.");
-    if (!plan.prodNo) return alert("PROD_NO를 입력하세요.");
-    if (!plan.prodDt) return alert("PROD_DT를 입력하세요.");
-    if (safeNum(plan.planQty) <= 0) return alert("PLAN_QTY를 1 이상 입력하세요.");
+  const handleReceiveLineChange = (idx, field, val) => {
+    if (isReceived) return;
+    const newLines = [...receiveLines];
+    newLines[idx][field] = field === "qty" ? Number(val) : val;
+    setReceiveLines(newLines);
+  };
+  const addReceiveLine = () => setReceiveLines([...receiveLines, { whCd: "", qty: 0 }]);
+  const removeReceiveLine = (idx) => {
+      if(receiveLines.length === 1) return;
+      setReceiveLines(receiveLines.filter((_, i) => i !== idx));
+  };
 
+  const handleShowLog = async () => {
     try {
-      await saveProdToDb(plan.status || "01");
-      setMessage("✅ 생산계획 DB 저장 완료");
+      const res = await fetch(`${API.prods}?size=1000&sort=prodNo,desc`);
+      if(res.ok) {
+        const data = await res.json();
+        setProdList(data.content || []);
+        setShowLog(true);
+      }
+    } catch(e) { alert("네트워크 오류"); }
+  };
+
+  const handleResumeFromLog = async (targetProdNo) => {
+    if (!targetProdNo) return;
+    try {
+      const res = await fetch(`${API.prods}/${encodeURIComponent(targetProdNo)}`);
+      if (!res.ok) throw new Error("계획 조회 실패");
+      const prodData = await res.json();
+
+      const foundItem = items.find(it => String(it.itemCd) === String(prodData.itemCd));
+      const newItemNm = foundItem ? foundItem.itemNm : "";
+
+      setPlan({
+        prodNo: prodData.prodNo,
+        prodDt: prodData.prodDt,
+        itemCd: prodData.itemCd,
+        itemNm: newItemNm,
+        planQty: prodData.planQty,
+        status: prodData.status,
+        remark: prodData.remark || "",
+        storeWhCd: "", badQty: 0, badRes: "",
+      });
+      
+      setIsReceived(false); 
+      if (foundItem) setSelectedProduct(foundItem);
+      if (prodData.itemCd && prodData.planQty > 0) {
+        await calcMrp(prodData.itemCd, prodData.planQty);
+      }
+
+      await fetchDetailLogs(prodData.prodNo);
+      
+      setMessage(`✅ [${targetProdNo}] 불러오기 완료`);
+      setShowLog(false);
     } catch (e) {
       console.error(e);
-      alert(`저장 실패\n${String(e.message || e)}`);
+      alert("불러오기 실패");
     }
   };
 
-  // -----------------------
-  // ✅ 단계 전환(핵심)
-  // -----------------------
-  const goStatus = async (ns) => {
-    setPlan((p) => ({ ...p, status: ns }));
-    await saveProdToDb(ns);
+  const saveProdToDb = async (nextStatus) => {
+    const payload = { ...plan, planQty: Number(plan.planQty || 0), status: nextStatus ?? plan.status };
+    
+    const isNew = !plan.prodNo;
+    const url = isNew ? `${API.prods}` : `${API.prods}/${encodeURIComponent(plan.prodNo)}`;
+    const method = isNew ? "POST" : "PUT";
+
+    try {
+        const res = await fetch(url, {
+          method: method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        
+        const saved = await res.json();
+        setPlan(prev => ({ ...prev, prodNo: saved.prodNo, status: saved.status }));
+        if(isNew) setMessage(`✅ 생성 완료 (${saved.prodNo})`);
+        else setMessage("✅ 저장되었습니다.");
+        
+    } catch(e) {
+        console.error(e);
+        alert(e.message);
+        throw e;
+    }
+  };
+
+  // ✅ [신규] 이전 단계 (뒤로가기) 로직
+  const handlePrevStep = async () => {
+    // 1. 예약(03) 상태 -> 확정(02)으로 되돌리기
+    if (plan.status === "03") {
+        if (!window.confirm("예약을 취소하고 확정 단계(02)로 돌아가시겠습니까?")) return;
+        try {
+            const res = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/unreserve`, { method: "POST" });
+            if (!res.ok) throw new Error(await res.text());
+
+            await saveProdToDb("02"); // 상태 02로 저장
+            setPlan(p => ({...p, status: "02"}));
+            await fetchDetailLogs(plan.prodNo); // 로그 갱신
+            setMessage("⏪ 예약 취소됨 (상태: 확정)");
+        } catch(e) { alert(e.message); }
+    } 
+    // 2. 확정(02) 상태 -> 기획(01)으로 되돌리기
+    else if (plan.status === "02") {
+        if (!window.confirm("확정을 취소하고 기획 단계(01)로 돌아가시겠습니까?\n(입력 내용을 수정할 수 있습니다)")) return;
+        try {
+            await saveProdToDb("01"); // 상태 01로 저장
+            setPlan(p => ({...p, status: "01"}));
+            setMessage("⏪ 확정 취소됨 (상태: 기획)");
+        } catch(e) { alert(e.message); }
+    }
   };
 
   const handleNext = async () => {
-    if (!plan.itemCd) return alert("제품 선택 필요");
-    if (!plan.prodNo) return alert("PROD_NO 필요");
-    if (safeNum(plan.planQty) <= 0) return alert("PLAN_QTY 필요");
+    if (isFullyLocked) return alert("이미 완료된 건입니다.");
+    if (!plan.itemCd || safeNum(plan.planQty) <= 0) return alert("제품과 수량을 입력하세요.");
 
     try {
-      // 01 -> 02 (확정)
-      if (plan.status === "01") {
-        await goStatus("02");
-        setMessage("➡ 01 → 02 (확정됨)");
-        return;
+      if (plan.status === "01" || !plan.prodNo) {
+        await saveProdToDb("02");
+        return; 
       }
 
-      // 02 -> 03 (예약)
       if (plan.status === "02") {
-        if (!allMrpOk) return alert("MRP 부족입니다. 부족 자재는 발주로 연결하세요.");
-        // reserve 실행
-        const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/reserve`, { method: "POST" });
-        if (!r.ok) {
-          const txt = await r.text().catch(() => "");
-          return alert(`예약 실패\n${txt}`);
-        }
-        await goStatus("03");
-        setMessage("➡ 02 → 03 (예약 완료)");
-        // reserve 이후 재고가 변하니 MRP 재계산
-        await calcMrp(plan.itemCd, safeNum(plan.planQty));
+        if (!allMrpOk && !window.confirm("자재가 부족합니다. 계속 진행하시겠습니까?")) return;
+        
+        const allocList = [];
+        Object.keys(manualAlloc).forEach(matCd => {
+          Object.keys(manualAlloc[matCd]).forEach(whCd => {
+            const qty = manualAlloc[matCd][whCd];
+            if(qty > 0) allocList.push({ itemCd: matCd, whCd: whCd, qty });
+          });
+        });
+
+        const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/reserve`, { 
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ remark: plan.remark, allocations: allocList })
+        });
+        if (!r.ok) return alert(await r.text());
+
+        await saveProdToDb("03"); 
+        setPlan(p => ({...p, status: "03"}));
+        await fetchDetailLogs(plan.prodNo);
         return;
       }
 
-      // 03 -> 04 (소모 전환)
       if (plan.status === "03") {
         const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/consume`, { method: "POST" });
-        if (!r.ok) {
-          const txt = await r.text().catch(() => "");
-          return alert(`소모 전환 실패\n${txt}`);
-        }
-        await goStatus("04");
-        setMessage("➡ 03 → 04 (생산중: 예약→소모)");
-        await calcMrp(plan.itemCd, safeNum(plan.planQty));
+        if (!r.ok) return alert(await r.text());
+        
+        setPlan(p => ({...p, status: "04"}));
+        await saveProdToDb("04");
+        await fetchDetailLogs(plan.prodNo);
         return;
       }
 
-      // 04 -> 05 (생산완료: 불량 입력)
       if (plan.status === "04") {
-        if (safeNum(plan.badQty) < 0) return alert("불량수량은 0 이상이어야 합니다.");
-        if (goodQty < 0) return alert("정상품 수량이 음수입니다.");
-
+        if (safeNum(plan.badQty) < 0) return alert("불량수량 오류");
+        
         const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/results2`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resultDt: plan.prodDt, whCd: "TEMP", 
+            goodQty: goodQty, badQty: Number(plan.badQty || 0), badRes: plan.badRes, remark: "생산완료"
+          }),
+        });
+        if (!r.ok) return alert(await r.text());
+
+        setPlan(p => ({...p, status: "05"}));
+        await saveProdToDb("05");
+        await fetchDetailLogs(plan.prodNo);
+        return;
+      }
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleReceive = async () => {
+    if (plan.status !== "05") return;
+    if (isReceived) return alert("이미 완료되었습니다.");
+    if (goodQty <= 0) return alert("입고할 수량이 없습니다.");
+    if (totalReceiveQty !== goodQty) return alert(`입고 총량(${totalReceiveQty})이 정상품 수량(${goodQty})과 다릅니다.`);
+
+    const allocations = receiveLines.filter(l => l.whCd && l.qty > 0);
+    if(allocations.length === 0) return alert("입고할 창고와 수량을 입력하세요.");
+
+    try {
+        const res = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/receive`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            resultDt: plan.prodDt,
-            whCd: plan.resultWhCd,
-            goodQty: goodQty,
-            badQty: Number(plan.badQty || 0),
-            badRes: plan.badRes || null,
-            remark: "생산완료",
+            allocations: allocations,
+            remark: "완제품 입고"
           }),
         });
-
-        if (!r.ok) {
-          const txt = await r.text().catch(() => "");
-          return alert(`생산완료 저장 실패\n${txt}`);
-        }
-
-        setPlan((p) => ({ ...p, status: "05" }));
-        await saveProdToDb("05");
-        setMessage(`➡ 04 → 05 (생산완료) 정상품=${goodQty}, 불량=${safeNum(plan.badQty)}`);
-        return;
-      }
-
-    } catch (e) {
-      console.error(e);
-      alert(`단계 전환 오류\n${String(e.message || e)}`);
-    }
+        if (!res.ok) return alert(await res.text());
+        
+        setMessage(`✅ 입고 완료`);
+        setIsReceived(true);
+        await fetchDetailLogs(plan.prodNo);
+    } catch(e) { alert("입고 오류"); }
   };
-
-  // ✅ 뒤로가기: 03 -> 02 (예약해제 후)
-  const handlePrevFromWait = async () => {
-    if (plan.status !== "03") return;
-    if (!window.confirm("생산대기(예약)를 해제하고 이전단계(확정)로 돌아갈까요?")) return;
-
-    const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/unreserve`, { method: "POST" });
-    if (!r.ok) {
-      const txt = await r.text().catch(() => "");
-      return alert(`예약해제 실패\n${txt}`);
-    }
-    await goStatus("02");
-    setMessage("⬅ 03 → 02 (예약해제 완료)");
-    await calcMrp(plan.itemCd, safeNum(plan.planQty));
-  };
-
-  const handleCancel = async () => {
-    if (!plan.itemCd) return;
-    if (!window.confirm("정말 취소하시겠습니까?")) return;
-
-    try {
-      const res = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/cancel`, {
-        method: "PUT",
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        return alert(`취소 실패\n${txt}`);
-      }
-      setPlan((p) => ({ ...p, status: "09" }));
-      setMessage("⛔ 취소 처리됨 (03이면 예약해제 포함)");
-      await calcMrp(plan.itemCd, safeNum(plan.planQty));
-    } catch (e) {
-      console.error(e);
-      alert("취소 중 오류");
-    }
-  };
-
-  // ✅ 완제품 입고(05에서)
-  const handleReceive = async () => {
-    if (plan.status !== "05") return alert("생산완료(05)에서만 입고 가능합니다.");
-    if (!plan.storeWhCd) return alert("입고 창고 선택 필요");
-    if (goodQty <= 0) return alert("정상품 수량이 0입니다.");
-
-    const res = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/receive`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        whCd: plan.storeWhCd,
-        qty: goodQty,
-        remark: "완제품 입고",
-      }),
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      return alert(`입고 실패\n${txt}`);
-    }
-
-    setMessage(`✅ 입고 완료 (정상품 ${goodQty}개)`);
-  };
-
-  const selectedMrp = selectedMatCd ? mrp[selectedMatCd] : null;
 
   return (
     <div className="prodplan-container">
       <div className="prodplan-header">
         <div className="prodplan-title">생산 계획</div>
         <div className="prodplan-header-right">
-          <div className="prodplan-stage">현재: {STATUS[plan.status] ?? plan.status}</div>
-          {plan.status === "03" && (
-            <button className="pp-btn" onClick={handlePrevFromWait}>
-              이전단계
-            </button>
-          )}
-          <button className="pp-btn btn-cancel" onClick={handleCancel} disabled={!plan.itemCd || plan.status === "09"}>
-            취소
-          </button>
+          <div className="prodplan-stage">현재: {STATUS_LABEL[plan.status] ?? plan.status}</div>
+          <button className="pp-btn" onClick={handleShowLog}>📜 생산 이력</button>
+          <button className="pp-btn btn-cancel" onClick={() => {}}>취소</button>
         </div>
       </div>
 
       <div className="prodplan-grid">
-        {/* A: 제품 목록 */}
         <section className="pp-panel pp-a">
-          <div className="pp-panel-header">
-            <div>📦 제품 목록</div>
-            <input
-              className="pp-input"
-              placeholder="코드/명 검색"
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-            />
-          </div>
-
-          <div className="pp-panel-body">
-            <div className="pp-table-scroll">
-              <table className="pp-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 50 }}>No</th>
-                    <th style={{ width: 140 }}>코드</th>
-                    <th>명칭</th>
-                    <th style={{ width: 90 }}>규격</th>
-                    <th style={{ width: 90 }}>단가</th>
-                  </tr>
-                </thead>
+            <div className="pp-panel-header">📦 제품 목록</div>
+            <div className="pp-panel-body pp-scroll">
+             <table className="pp-table">
+                <thead><tr><th>No</th><th>코드</th><th>명칭</th></tr></thead>
                 <tbody>
                   {visibleProducts.map((p, i) => (
-                    <tr
-                      key={p.itemCd}
-                      className={selectedProduct?.itemCd === p.itemCd ? "selected" : ""}
-                      onClick={() => handleSelectProduct(p)}
-                    >
-                      <td>{i + 1}</td>
-                      <td>{p.itemCd}</td>
-                      <td style={{ textAlign: "left" }}>{p.itemNm}</td>
-                      <td>{p.itemSpec ?? ""}</td>
-                      <td style={{ textAlign: "right" }}>{p.itemCost ?? ""}</td>
+                    <tr key={p.itemCd} className={selectedProduct?.itemCd === p.itemCd ? "selected" : ""} onClick={() => handleSelectProduct(p)}>
+                      <td>{i + 1}</td><td>{p.itemCd}</td><td style={{textAlign:"left"}}>{p.itemNm}</td>
                     </tr>
                   ))}
-                  {visibleProducts.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="pp-empty">제품이 없습니다.</td>
-                    </tr>
-                  )}
                 </tbody>
+             </table>
+            </div>
+        </section>
+
+        <section className="pp-panel pp-c">
+           <div className="pp-panel-header">
+             <div>📝 계획 입력</div>
+             <div className="pp-actions">
+               {!isFullyLocked && <button className="pp-btn btn-save" onClick={() => saveProdToDb()}>저장</button>}
+               
+               {/* ✅ [신규] 이전단계 버튼 (02, 03 상태일 때 표시) */}
+               {(plan.status === "02" || plan.status === "03") && (
+                   <button className="pp-btn" onClick={handlePrevStep} style={{backgroundColor:"#fff3e0", color:"#e65100", border:"1px solid #ffcc80"}}>
+                       {plan.status === "03" ? "⏪ 예약취소" : "⏪ 확정취소"}
+                   </button>
+               )}
+
+               {!isFullyLocked && (
+                   <button className="pp-btn btn-next" onClick={handleNext}>
+                     {plan.status === "02" ? "예약실행" : "다음단계"}
+                   </button>
+               )}
+             </div>
+           </div>
+           <div className="pp-panel-body pp-scroll">
+              <div className="pp-form">
+                 <div className="pp-row">
+                    <div className="pp-field"><label>NO (자동)</label>
+                        <input className="pp-input" value={plan.prodNo} readOnly placeholder="저장 시 자동생성" style={{background:"#f5f5f5", color:"#888"}}/>
+                    </div>
+                    <div className="pp-field"><label>일자</label>
+                        <input className="pp-input" type="date" value={plan.prodDt} onChange={handlePlanChange} name="prodDt" readOnly={isPlanLocked}/>
+                    </div>
+                 </div>
+                 <div className="pp-row">
+                    <div className="pp-field"><label>수량</label>
+                        <input className="pp-input" type="number" value={plan.planQty} onChange={handlePlanChange} name="planQty" readOnly={isPlanLocked}/>
+                    </div>
+                    <div className="pp-field"><label>상태</label>
+                        <input className="pp-input" value={STATUS_LABEL[plan.status]} readOnly/>
+                    </div>
+                 </div>
+                 {plan.status === "04" && (
+                    <div className="pp-row">
+                        <div className="pp-field"><label>불량수량</label><input className="pp-input" type="number" name="badQty" value={plan.badQty} onChange={handlePlanChange}/></div>
+                        <div className="pp-field"><label>정상품</label><input className="pp-input" value={goodQty} readOnly/></div>
+                    </div>
+                 )}
+                 {plan.status === "05" && (
+                    <div className="pp-receive-box">
+                        <div className="pp-section-title">입고 창고 지정 (잔여: {goodQty - totalReceiveQty})</div>
+                        {receiveLines.map((line, idx) => (
+                            <div key={idx} className="pp-row" style={{marginBottom:4}}>
+                                <select className="pp-input" style={{flex:2}} value={line.whCd} onChange={(e) => handleReceiveLineChange(idx, 'whCd', e.target.value)} disabled={isReceived}>
+                                    <option value="">창고선택</option>
+                                    {whs.map(w => <option key={w.whCd} value={w.whCd}>{w.whNm}</option>)}
+                                </select>
+                                <input className="pp-input" style={{flex:1}} type="number" value={line.qty} onChange={(e) => handleReceiveLineChange(idx, 'qty', e.target.value)} disabled={isReceived} placeholder="수량"/>
+                                {!isReceived && <button className="pp-btn" onClick={() => removeReceiveLine(idx)}>-</button>}
+                            </div>
+                        ))}
+                        {!isReceived && <button className="pp-btn" style={{width:"100%", marginBottom:10}} onClick={addReceiveLine}>+ 창고 추가</button>}
+                        <button className="pp-btn btn-save" style={{width:"100%"}} onClick={handleReceive} disabled={isReceived}>{isReceived ? "입고완료됨" : "입고확정"}</button>
+                    </div>
+                 )}
+              </div>
+           </div>
+        </section>
+
+        <section className="pp-panel pp-b">
+          <div className="pp-panel-header">🧾 MRP 및 자재 사용 내역</div>
+          <div className="pp-panel-body pp-scroll">
+             <div style={{height: "40%", overflow:"auto", borderBottom:"1px solid #eee"}}>
+               <table className="pp-table">
+                 <thead><tr><th>자재</th><th>필요</th><th>가용</th><th>OK</th></tr></thead>
+                 <tbody>
+                    {bomAgg.map(m => {
+                        const row = mrp[m.sItemCd];
+                        const ok = row?.ok;
+                        return (
+                            <tr key={m.sItemCd} className={selectedMatCd === m.sItemCd ? "selected" : ""} onClick={() => setSelectedMatCd(m.sItemCd)}>
+                                <td>{m.sItemCd}</td><td>{row?.required}</td><td>{row?.totals?.availQty}</td>
+                                <td style={{color: ok ? "green" : "red"}}>{ok ? "✓" : "부족"}</td>
+                            </tr>
+                        );
+                    })}
+                 </tbody>
+               </table>
+             </div>
+             
+             <div className="pp-section-title" style={{marginTop: 10}}>
+                {plan.status < "04" ? "🏗 투입 창고 및 수량 지정 (선택)" : "🔒 확정된 자재 투입 내역"}
+             </div>
+             <div style={{height: "50%", overflow:"auto"}}>
+               {/* 04(생산중) 전까지는 입력창 표시 (단, 03(예약)은 readOnly) */}
+               {plan.status < "04" ? (
+                   selectedMrp ? (
+                     <table className="pp-table">
+                       <thead>
+                         <tr><th>창고</th><th>재고</th><th>가용</th><th style={{width: 80, background: "#fff3e0"}}>투입(입력)</th></tr>
+                       </thead>
+                       <tbody>
+                         {selectedMrp.rows.map((r, idx) => {
+                           const manualVal = manualAlloc[selectedMatCd]?.[r.whCd] ?? "";
+                           return (
+                             <tr key={idx}>
+                               <td style={{textAlign:"left"}}>{r.whCd} {getWhNm(r.whCd)}</td>
+                               <td style={{textAlign:"right"}}>{r.stockQty}</td>
+                               <td style={{textAlign:"right"}}>{r.availQty}</td>
+                               <td style={{padding:0}}>
+                                 <input type="number" className="pp-input" 
+                                        style={{width:"100%", border:"none", textAlign:"right", background:"#fff3e0"}}
+                                        placeholder="자동"
+                                        value={manualVal}
+                                        readOnly={plan.status === "03"} // 예약상태에선 수정 불가 (취소 후 수정)
+                                        onChange={(e) => handleAllocChange(selectedMatCd, r.whCd, e.target.value)}
+                                 />
+                               </td>
+                             </tr>
+                           );
+                         })}
+                       </tbody>
+                     </table>
+                   ) : <div className="pp-empty">자재를 선택하면 창고별 재고가 표시됩니다.</div>
+               ) : (
+                   <table className="pp-table">
+                        <thead><tr><th>자재</th><th>창고</th><th>수량</th><th>유형</th></tr></thead>
+                        <tbody>
+                            {detailLogs.filter(l => l.ioType === "PROD_USED" || l.ioType === "RESERVE").map((log, i) => (
+                                <tr key={i}>
+                                    <td>{log.itemMst?.itemNm}</td>
+                                    <td>{log.fromWh?.whCd || log.toWh?.whCd}</td>
+                                    <td style={{textAlign:"right"}}>{log.qty}</td>
+                                    <td>{log.ioType === "RESERVE" ? "예약됨" : "투입됨"}</td>
+                                </tr>
+                            ))}
+                            {detailLogs.length === 0 && <tr><td colSpan={4} className="pp-empty">내역 없음</td></tr>}
+                        </tbody>
+                    </table>
+               )}
+             </div>
+          </div>
+        </section>
+
+        <section className="pp-panel pp-d">
+           <div className="pp-panel-header">📌 요약 및 결과</div>
+           <div className="pp-panel-body pp-scroll">
+              <div className="pp-card">
+                 <div>PROD: <b>{plan.prodNo}</b></div>
+                 <div>제품: {plan.itemCd}</div>
+                 <div>수량: {plan.planQty}</div>
+                 <hr/>
+                 <div className="pp-section-title">🎁 완제품 입고 결과</div>
+                 {detailLogs.filter(l => l.ioType === "PROD_RESULT").map((log, i) => (
+                     <div key={i} style={{display:"flex", justifyContent:"space-between", fontSize:12, padding:"4px 0", borderBottom:"1px dashed #eee"}}>
+                         <span>📍 {log.toWh?.whNm} ({log.toWh?.whCd})</span>
+                         <b>{log.qty} 개</b>
+                     </div>
+                 ))}
+                 {detailLogs.filter(l => l.ioType === "PROD_RESULT").length === 0 && <div style={{color:"#999", fontSize:12}}>아직 입고되지 않았습니다.</div>}
+              </div>
+           </div>
+        </section>
+      </div>
+
+      {showLog && (
+        <div className="pp-modal-overlay">
+          <div className="pp-modal" style={{width: "700px"}}>
+            <div className="pp-modal-header"><span>📜 전체 생산 이력 (최신순)</span><button onClick={() => setShowLog(false)}>X</button></div>
+            <div className="pp-modal-body">
+              <table className="pp-table">
+                 <thead><tr><th>일자</th><th>NO</th><th>상태</th><th>제품</th><th>수량</th></tr></thead>
+                 <tbody>
+                    {prodList.map((row, i) => (
+                       <tr key={i} onDoubleClick={() => handleResumeFromLog(row.prodNo)} style={{cursor:"pointer"}}>
+                         <td>{row.prodDt}</td><td style={{fontWeight:"bold"}}>{row.prodNo}</td>
+                         <td>{STATUS_LABEL[row.status] || row.status}</td><td>{getItemNm(row.itemCd)}</td><td style={{textAlign:"right"}}>{row.planQty}</td>
+                       </tr>
+                    ))}
+                 </tbody>
               </table>
             </div>
           </div>
-        </section>
-
-        {/* C: 생산계획 입력 */}
-        <section className="pp-panel pp-c">
-          <div className="pp-panel-header">
-            <div>📝 생산계획 입력</div>
-            <div className="pp-actions">
-              <button className="pp-btn btn-save" onClick={handleSavePlan} disabled={plan.status === "09"}>
-                저장
-              </button>
-              <button className="pp-btn btn-next" onClick={handleNext} disabled={plan.status === "09" || !plan.itemCd}>
-                다음단계
-              </button>
-            </div>
-          </div>
-
-          <div className="pp-panel-body pp-scroll">
-            <div className="pp-form">
-              <div className="pp-row">
-                <div className="pp-field">
-                  <label>PROD_NO</label>
-                  <input className="pp-input" name="prodNo" value={plan.prodNo} onChange={handlePlanChange} />
-                </div>
-                <div className="pp-field">
-                  <label>PROD_DT</label>
-                  <input className="pp-input" type="date" name="prodDt" value={plan.prodDt} onChange={handlePlanChange} />
-                </div>
-              </div>
-
-              <div className="pp-row">
-                <div className="pp-field">
-                  <label>제품</label>
-                  <input className="pp-input" value={plan.itemCd ? `${plan.itemCd} - ${plan.itemNm}` : ""} readOnly />
-                </div>
-              </div>
-
-              <div className="pp-row">
-                <div className="pp-field">
-                  <label>PLAN_QTY</label>
-                  <input className="pp-input" type="number" name="planQty" value={plan.planQty} onChange={handlePlanChange} />
-                </div>
-                <div className="pp-field">
-                  <label>STATUS</label>
-                  <input className="pp-input" value={STATUS[plan.status] ?? plan.status} readOnly />
-                </div>
-              </div>
-
-              {/* ✅ 생산중(04)에서 불량 입력 */}
-              {plan.status === "04" && (
-                <>
-                  <div className="pp-row">
-                    <div className="pp-field">
-                      <label>불량수량(BAD_QTY)</label>
-                      <input className="pp-input" type="number" name="badQty" value={plan.badQty} onChange={handlePlanChange} />
-                    </div>
-                    <div className="pp-field">
-                      <label>정상품(GOOD_QTY = PLAN - BAD)</label>
-                      <input className="pp-input" value={goodQty} readOnly />
-                    </div>
-                  </div>
-                  <div className="pp-row">
-                    <div className="pp-field">
-                      <label>불량내역(BAD_RES)</label>
-                      <input className="pp-input" name="badRes" value={plan.badRes} onChange={handlePlanChange} />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* ✅ 생산완료(05)에서 입고 */}
-              {plan.status === "05" && (
-                <>
-                  <div className="pp-row">
-                    <div className="pp-field">
-                      <label>정상품(GOOD_QTY)</label>
-                      <input className="pp-input" value={goodQty} readOnly />
-                    </div>
-                    <div className="pp-field">
-                      <label>입고 창고</label>
-                      <select className="pp-input" name="storeWhCd" value={plan.storeWhCd} onChange={handlePlanChange}>
-                        <option value="">-- 선택 --</option>
-                        {whs.map((w) => (
-                          <option key={w.whCd ?? w.WH_CD} value={w.whCd ?? w.WH_CD}>
-                            {w.whCd ?? w.WH_CD} {w.whNm ? `- ${w.whNm}` : w.WH_NM ? `- ${w.WH_NM}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="pp-actions" style={{ justifyContent: "flex-end" }}>
-                    <button className="pp-btn btn-save" onClick={handleReceive}>입고 처리</button>
-                  </div>
-                </>
-              )}
-
-              <div className="pp-row">
-                <div className="pp-field">
-                  <label>비고</label>
-                  <textarea className="pp-input" rows={3} name="remark" value={plan.remark} onChange={handlePlanChange} />
-                </div>
-              </div>
-
-              {message && <div className="pp-message">{message}</div>}
-            </div>
-          </div>
-        </section>
-
-        {/* B: MRP */}
-        <section className="pp-panel pp-b">
-          <div className="pp-panel-header">
-            <div>🧾 MRP</div>
-            {loadingMrp && <div className="pp-badge">계산중...</div>}
-          </div>
-
-          <div className="pp-panel-body pp-scroll">
-            {!plan.itemCd ? (
-              <div className="pp-empty">제품을 선택하면 MRP가 계산됩니다.</div>
-            ) : safeNum(plan.planQty) <= 0 ? (
-              <div className="pp-empty">PLAN_QTY를 입력하세요.</div>
-            ) : bomAgg.length === 0 ? (
-              <div className="pp-empty">BOM이 없습니다.</div>
-            ) : (
-              <div className="pp-table-scroll">
-                <table className="pp-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 120 }}>자재코드</th>
-                      <th>자재명</th>
-                      <th style={{ width: 120 }}>1개당 소요</th>
-                      <th style={{ width: 120 }}>필요수량</th>
-                      <th style={{ width: 120 }}>가용수량</th>
-                      <th style={{ width: 60 }}>OK</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bomAgg.map((m) => {
-                      const matCd = m.sItemCd;
-                      const row = mrp[matCd];
-                      const ok = row?.ok === true;
-                      return (
-                        <tr
-                          key={matCd}
-                          className={selectedMatCd === matCd ? "selected" : ""}
-                          onClick={() => setSelectedMatCd(matCd)}
-                        >
-                          <td>{matCd}</td>
-                          <td style={{ textAlign: "left" }}>{getItemNm(matCd) || "-"}</td>
-                          <td style={{ textAlign: "right" }}>{row?.useQtyPerOne ?? m.useQtySum}</td>
-                          <td style={{ textAlign: "right" }}>{row?.required ?? 0}</td>
-                          <td style={{ textAlign: "right" }}>{row?.totals?.availQty ?? 0}</td>
-                          <td style={{ fontWeight: 800, color: ok ? "#2e7d32" : "#d32f2f" }}>{ok ? "✓" : "✕"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="pp-section-title" style={{ marginTop: 12 }}>선택 자재 창고별 재고</div>
-            {!selectedMrp ? (
-              <div className="pp-empty">자재를 클릭하세요.</div>
-            ) : (
-              <div className="pp-table-scroll">
-                <table className="pp-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 180 }}>창고</th>
-                      <th style={{ width: 120 }}>재고</th>
-                      <th style={{ width: 120 }}>예약</th>
-                      <th style={{ width: 120 }}>가용</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedMrp.rows.map((r, idx) => (
-                      <tr key={`${selectedMatCd}-${r.whCd}-${idx}`}>
-                        <td style={{ textAlign: "left" }}>
-                          {r.whCd} {getWhNm(r.whCd) ? `/ ${getWhNm(r.whCd)}` : ""}
-                        </td>
-                        <td style={{ textAlign: "right" }}>{r.stockQty}</td>
-                        <td style={{ textAlign: "right" }}>{r.allocQty}</td>
-                        <td style={{ textAlign: "right" }}>{r.availQty}</td>
-                      </tr>
-                    ))}
-                    {selectedMrp.rows.length === 0 && (
-                      <tr><td colSpan={4} className="pp-empty">재고가 없습니다.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* D: 상태 요약 */}
-        <section className="pp-panel pp-d">
-          <div className="pp-panel-header">
-            <div>📌 상태 요약</div>
-          </div>
-          <div className="pp-panel-body">
-            <div className="pp-card">
-              <div>상태: <b>{STATUS[plan.status] ?? plan.status}</b></div>
-              <div>제품: <b>{plan.itemCd}</b> {plan.itemNm ? `(${plan.itemNm})` : ""}</div>
-              <div>계획수량: <b>{plan.planQty}</b></div>
-              <div>불량: <b>{safeNum(plan.badQty)}</b> / 정상품: <b>{goodQty}</b></div>
-            </div>
-          </div>
-        </section>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

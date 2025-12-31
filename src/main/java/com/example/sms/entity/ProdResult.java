@@ -17,7 +17,7 @@ public class ProdResult {
     @EmbeddedId
     private ProdResultId id;
 
-    @Column(name = "RESULT_DT") // ✅ DATE
+    @Column(name = "RESULT_DT")
     private LocalDate resultDt;
 
     @Column(name = "WH_CD", length = 10)

@@ -243,7 +243,7 @@ export default function 사업장관리() {
                 </div>
                 <div className="image-buttons">
                     <input type="file" ref={fileInputRef} onChange={handleImageChange} style={{display:'none'}} accept="image/*" />
-                    <button className="btn" onClick={() => fileInputRef.current.click()} style={{background:'#fff'}}>이미지 선택</button>
+                    <button className="btn" onClick={() => fileInputRef.current.click()} style={{background:'#000'}}>이미지 선택</button>
                     <button className="btn" onClick={handleDeleteImage} style={{background:'#fff', color:'red'}}>삭제</button>
                 </div>
             </div>
