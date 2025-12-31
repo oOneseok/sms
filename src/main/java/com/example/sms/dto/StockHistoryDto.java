@@ -16,6 +16,7 @@ public class StockHistoryDto {
     private String itemCd;      // 품목
     private String whCd;        // 창고
     private BigDecimal qty;     // 변동 수량 (qtyDelta)
+    private BigDecimal balance; // 누적 잔고
     private String custCd;      // 거래처 코드
     private String custNm;      // 거래처 명 (화면 표시용)
     private String remark;      // 비고

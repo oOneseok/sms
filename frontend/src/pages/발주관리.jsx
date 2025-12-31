@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // useLocation 추가됨
 import "../css/pages/PurchasePage.css";
 
 const API = "http://localhost:8080";
@@ -7,14 +7,18 @@ const API = "http://localhost:8080";
 const STATUS = [
   { v: "p1", t: "등록" },
   { v: "p2", t: "발주확정" },
-  { v: "p3", t: "입고완료" }, // 시스템 전용 (드롭다운에서 숨김 처리됨)
+  { v: "p3", t: "입고완료" }, // 시스템 전용 (드롭다운에서 숨김 처리 로직 적용됨)
   { v: "p9", t: "취소" },
 ];
 
 const generateId = () => `row_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-export default function 발주관리() {
+export default function PurchasePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const query = new URLSearchParams(location.search);
+  const returnPath = query.get("returnPath");
 
   // --- 상태 관리 ---
   const [list, setList] = useState([]);
@@ -192,7 +196,18 @@ export default function 발주관리() {
   return (
     <div className="business-page">
       <div className="page-header">
-        <h2 className="page-title">발주 관리</h2>
+        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+            <h2 className="page-title">발주 관리</h2>
+            {returnPath && (
+                <button 
+                    className="btn" 
+                    style={{backgroundColor: '#607d8b', padding: '6px 12px', fontSize: '13px'}}
+                    onClick={() => navigate(returnPath)}
+                >
+                    ↩ 재고관리로 돌아가기
+                </button>
+            )}
+        </div>
         <div className="button-group">
           <button className="btn new" onClick={reset}>신규</button>
           <button className="btn save" onClick={save}>저장</button>
@@ -340,9 +355,9 @@ export default function 발주관리() {
                       style={{backgroundColor: (isLocked || isNew) ? '#f5f5f5' : 'white'}}
                     >
                       {STATUS.map(s => {
-                         // 현재 행이 이미 'p3'가 아니라면, 드롭다운 옵션에서 'p3'를 아예 렌더링하지 않음
-                         if (s.v === 'p3' && r.status !== 'p3') return null;
-                         return <option key={s.v} value={s.v}>{s.t}</option>;
+                          // 현재 행이 이미 'p3'가 아니라면, 드롭다운 옵션에서 'p3'를 아예 렌더링하지 않음
+                          if (s.v === 'p3' && r.status !== 'p3') return null;
+                          return <option key={s.v} value={s.v}>{s.t}</option>;
                       })}
                     </select>
                     

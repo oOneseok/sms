@@ -24,7 +24,7 @@ public class ItemStockHisController {
     private final ItemStockHisRepository itemStockHisRepository;
     private final CustRepository custRepository; // ✅ 거래처 이름 조회를 위해 추가
 
-    // 목록 + 필터 + 기간 + 페이징
+    // 목록 조회 (잔고 포함)
     @GetMapping
     public ResponseEntity<Page<StockHistoryDto>> list(
             @RequestParam(required = false) String itemCd,
@@ -33,28 +33,29 @@ public class ItemStockHisController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDt,
             Pageable pageable
     ) {
-        // 1. DB에서 엔티티 목록 조회
-        Page<ItemStockHis> page = itemStockHisRepository.search(itemCd, whCd, fromDt, toDt, pageable);
+        // 1. Repository에서 Projection으로 조회 (Native Query 실행)
+        Page<ItemStockHisRepository.HistoryWithBalanceProjection> page =
+                itemStockHisRepository.findHistoryWithBalance(itemCd, whCd, fromDt, toDt, pageable);
 
-        // 2. 엔티티 -> DTO 변환 (이때 거래처 이름을 찾아옴)
+        // 2. DTO 변환 (거래처명 매핑 포함)
         Page<StockHistoryDto> dtoPage = page.map(h -> {
             String custNm = "";
-            // custCd가 있으면 이름 조회
             if (h.getCustCd() != null && !h.getCustCd().isBlank()) {
                 custNm = custRepository.findById(h.getCustCd())
                         .map(CustMst::getCustNm)
-                        .orElse(""); // 없으면 빈 문자열
+                        .orElse("");
             }
 
             return StockHistoryDto.builder()
                     .stkHisCd(h.getStkHisCd())
-                    .ioDt(h.getTrxDt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))) // 날짜 포맷팅
+                    .ioDt(h.getTrxDt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
                     .ioType(h.getIoType())
                     .itemCd(h.getItemCd())
                     .whCd(h.getWhCd())
-                    .qty(h.getQtyDelta())
+                    .qty(h.getQty())       // Projection 메서드명 사용
+                    .balance(h.getBalance()) // ✅ 잔고 매핑!
                     .custCd(h.getCustCd())
-                    .custNm(custNm) // ✅ 조회한 이름 세팅
+                    .custNm(custNm)
                     .remark(h.getRemark())
                     .build();
         });
