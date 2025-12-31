@@ -40,13 +40,13 @@
   color: #444;
 }
 
-/* 2x2 그리드 */
+/* ✅ 2단 구성: (상단 2개 패널) + (하단 1개 패널) */
 .prodplan-grid {
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 1fr 1.2fr;  /* 아래가 더 길게 필요하면 1.2fr 추천 */
   gap: 10px;
 }
 
@@ -77,11 +77,10 @@
   min-height: 0;
 }
 
-/* 영역 지정 */
+/* ✅ 영역 지정 (pp-b 제거, pp-d가 아래 전체) */
 .pp-a { grid-column: 1; grid-row: 1; }
 .pp-c { grid-column: 2; grid-row: 1; }
-.pp-b { grid-column: 1; grid-row: 2; }
-.pp-d { grid-column: 2; grid-row: 2; }
+.pp-d { grid-column: 1 / -1; grid-row: 2; }
 
 /* 스크롤 */
 .pp-scroll {
@@ -219,39 +218,6 @@ textarea.pp-input {
   padding: 8px 10px;
   font-size: 12px;
   border-radius: 3px;
-}
-
-.pp-hint {
-  color: #666;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-/* 단계 리스트 */
-.pp-steps {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 13px;
-  color: #444;
-  line-height: 1.8;
-}
-
-.pp-steps li.on {
-  font-weight: 800;
-  color: #2b579a;
-}
-
-.pp-steps li.cancel {
-  font-weight: 800;
-  color: #b00020;
-}
-
-.pp-mini {
-  margin-top: 10px;
-  font-size: 12px;
-  color: #444;
-  border-top: 1px dashed #ddd;
-  padding-top: 10px;
 }
 
 /* D영역 꾸밈 */

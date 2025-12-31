@@ -1,5 +1,6 @@
 package com.example.sms.controller;
 
+import com.example.sms.dto.ProdResultSaveReq;
 import com.example.sms.entity.Prod;
 import com.example.sms.entity.ProdResult;
 import com.example.sms.repository.ProdRepository;
@@ -9,12 +10,10 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -70,34 +69,67 @@ public class ProdController {
         return prodResultRepository.findByProdNoOrderBySeq(prodNo);
     }
 
-    // 생산실적 등록 + (선택) 입고/IO/HIS/재고 반영까지
-    // POST /api/prods/{prodNo}/results
-    @PostMapping("/{prodNo}/results")
+    // ===========================
+    // ✅ 예약/예약취소/소모
+    // ===========================
+
+    // 02 -> 03 (자재 예약)
+    @PostMapping("/{prodNo}/reserve")
     @Transactional
-    public ProdResult createResult(@PathVariable String prodNo, @RequestBody ProdResultReq req) {
-        return prodService.createResultAndOptionallyReceive(
+    public ProdService.ReserveResult reserve(@PathVariable String prodNo,
+                                             @RequestParam(required = false) String remark) {
+        return prodService.reserveMaterials(prodNo, remark);
+    }
+
+    // 03 -> (예약해제)
+    @PostMapping("/{prodNo}/unreserve")
+    @Transactional
+    public void unreserve(@PathVariable String prodNo,
+                          @RequestParam(required = false) String remark) {
+        prodService.unreserveMaterials(prodNo, remark);
+        // 상태를 02로 내리는 건 프론트에서 PUT /api/prods/{prodNo} 로 status=02 업데이트 권장
+    }
+
+    // 03 -> 04 (예약 소모 = 생산 투입)
+    @PostMapping("/{prodNo}/consume")
+    @Transactional
+    public void consume(@PathVariable String prodNo,
+                        @RequestParam(required = false) String remark) {
+        prodService.consumeReservedMaterials(prodNo, remark);
+    }
+
+    // ===========================
+    // ✅ 생산완료(정상품/불량 저장)
+    // ===========================
+    @PostMapping("/{prodNo}/results2")
+    @Transactional
+    public ProdResult saveResult(@PathVariable String prodNo,
+                                 @RequestBody ProdResultSaveReq req) {
+
+        return prodService.saveProdResult(
                 prodNo,
-                req.resultDt,
-                req.whCd,
-                req.goodQty,
-                req.badQty,
-                req.badRes,
-                req.remark,
-                Boolean.TRUE.equals(req.applyToStockAndIo)
+                req.getResultDt(),
+                req.getWhCd(),      // ✅ dto 패키지의 ProdResultSaveReq에 존재
+                req.getGoodQty(),
+                req.getBadQty(),
+                req.getBadRes(),
+                req.getRemark()
         );
     }
 
-    @Data
-    public static class ProdResultReq {
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        private LocalDate resultDt;
-        private String whCd;
-        private BigDecimal goodQty;
-        private BigDecimal badQty;
-        private String badRes;
-        private String remark;
+    // ===========================
+    // ✅ 완제품 입고(창고배정)
+    // ===========================
+    @PostMapping("/{prodNo}/receive")
+    @Transactional
+    public void receive(@PathVariable String prodNo, @RequestBody ReceiveReq req) {
+        prodService.receiveFinishedGoods(prodNo, req.whCd, req.qty, req.remark);
+    }
 
-        // ✅ true면: TB_ITEMSTOCK 반영 + TB_ITEMSTOCK_HIS 기록 + TB_ITEM_IO 기록 + PROD status=05
-        private Boolean applyToStockAndIo;
+    @Data
+    public static class ReceiveReq {
+        private String whCd;
+        private BigDecimal qty;
+        private String remark;
     }
 }

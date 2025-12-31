@@ -10,4 +10,5 @@ public interface ItemIoRepository extends JpaRepository<ItemIo, String> {
 
     // [추가] 근거(Ref)로 조회
     Optional<ItemIo> findByRefTbAndRefCdAndRefSeq(String refTb, String refCd, Integer refSeq);
+    List<ItemIo> findByRefTbAndRefCdAndIoType(String refTb, String refCd, String ioType);
 }
