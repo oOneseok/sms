@@ -118,4 +118,4 @@ export default function 입출고이력() {
       </div>
     </div>
   );
-}
+} 

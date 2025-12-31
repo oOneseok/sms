@@ -11,12 +11,15 @@ const API = {
 
 const safeNum = (v) => (v === null || v === undefined || v === "" ? 0 : Number(v));
 
+// ✅ [수정] 상태 라벨 정의
 const STATUS_LABEL = {
-  "01": "준비(기획)",
-  "02": "확정(MRP)",
+  "01": "준비",
+  "02": "MRP확정",
   "03": "생산예약",
   "04": "생산중",
-  "05": "생산완료",
+  "05": "생산완료", // 불량입력 단계
+  "06": "창고배정", // 창고지정 단계
+  "07": "공정완료", // 최종 종료
   "09": "취소",
 };
 
@@ -71,7 +74,9 @@ export default function 생산계획() {
   const [prodList, setProdList] = useState([]);
   
   const [detailLogs, setDetailLogs] = useState([]); 
-  const [isReceived, setIsReceived] = useState(false);
+  
+  // 07(공정완료) 상태면 끝
+  const isProcessDone = plan.status === "07";
 
   const goodQty = useMemo(() => {
     const g = safeNum(plan.planQty) - safeNum(plan.badQty);
@@ -99,9 +104,9 @@ export default function 생산계획() {
     return keys.every((k) => mrp[k]?.ok === true);
   }, [mrp]);
 
-  // ✅ 03(예약) 이상이면 기본정보 수정 불가
-  const isPlanLocked = plan.status >= "03";
-  const isFullyLocked = plan.status === "05" && isReceived;
+  // 잠금 조건
+  const isPlanLocked = plan.status >= "03" || plan.status === "09";
+  const isFullyLocked = plan.status === "07"; 
 
   // --- Helpers ---
   const itemMap = useMemo(() => {
@@ -202,10 +207,7 @@ export default function 생산계획() {
         if(res.ok) {
             const logs = await res.json();
             setDetailLogs(logs);
-            const hasReceived = logs.some(l => l.ioType === "PROD_RESULT");
-            setIsReceived(hasReceived);
             
-            // 예약 정보 복구 (수동할당값 복원)
             const reserved = logs.filter(l => l.ioType === "RESERVE");
             const restored = {};
             reserved.forEach(log => {
@@ -230,7 +232,6 @@ export default function 생산계획() {
     setSelectedMatCd("");
     setMessage("");
     setManualAlloc({}); 
-    setIsReceived(false);
     setDetailLogs([]);
     setReceiveLines([{ whCd: "", qty: 0 }]); 
 
@@ -279,7 +280,7 @@ export default function 생산계획() {
   };
 
   const handleReceiveLineChange = (idx, field, val) => {
-    if (isReceived) return;
+    if (isProcessDone) return;
     const newLines = [...receiveLines];
     newLines[idx][field] = field === "qty" ? Number(val) : val;
     setReceiveLines(newLines);
@@ -319,10 +320,11 @@ export default function 생산계획() {
         planQty: prodData.planQty,
         status: prodData.status,
         remark: prodData.remark || "",
-        storeWhCd: "", badQty: 0, badRes: "",
+        storeWhCd: "", 
+        badQty: (prodData.status >= "05") ? (prodData.badQty || 0) : 0, 
+        badRes: "",
       });
       
-      setIsReceived(false); 
       if (foundItem) setSelectedProduct(foundItem);
       if (prodData.itemCd && prodData.planQty > 0) {
         await calcMrp(prodData.itemCd, prodData.planQty);
@@ -340,7 +342,6 @@ export default function 생산계획() {
 
   const saveProdToDb = async (nextStatus) => {
     const payload = { ...plan, planQty: Number(plan.planQty || 0), status: nextStatus ?? plan.status };
-    
     const isNew = !plan.prodNo;
     const url = isNew ? `${API.prods}` : `${API.prods}/${encodeURIComponent(plan.prodNo)}`;
     const method = isNew ? "POST" : "PUT";
@@ -365,44 +366,82 @@ export default function 생산계획() {
     }
   };
 
-  // ✅ [신규] 이전 단계 (뒤로가기) 로직
   const handlePrevStep = async () => {
-    // 1. 예약(03) 상태 -> 확정(02)으로 되돌리기
     if (plan.status === "03") {
         if (!window.confirm("예약을 취소하고 확정 단계(02)로 돌아가시겠습니까?")) return;
         try {
             const res = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/unreserve`, { method: "POST" });
             if (!res.ok) throw new Error(await res.text());
 
-            await saveProdToDb("02"); // 상태 02로 저장
+            await saveProdToDb("02"); 
             setPlan(p => ({...p, status: "02"}));
-            await fetchDetailLogs(plan.prodNo); // 로그 갱신
-            setMessage("⏪ 예약 취소됨 (상태: 확정)");
+            await fetchDetailLogs(plan.prodNo);
+            await calcMrp(plan.itemCd, plan.planQty); 
+            setMessage("⏪ 예약 취소 완료 (자재 반환됨)");
         } catch(e) { alert(e.message); }
     } 
-    // 2. 확정(02) 상태 -> 기획(01)으로 되돌리기
     else if (plan.status === "02") {
-        if (!window.confirm("확정을 취소하고 기획 단계(01)로 돌아가시겠습니까?\n(입력 내용을 수정할 수 있습니다)")) return;
+        if (!window.confirm("확정을 취소하고 기획 단계로 돌아가시겠습니까?")) return;
         try {
-            await saveProdToDb("01"); // 상태 01로 저장
+            await saveProdToDb("01"); 
             setPlan(p => ({...p, status: "01"}));
             setMessage("⏪ 확정 취소됨 (상태: 기획)");
         } catch(e) { alert(e.message); }
     }
   };
 
+  const handleCancel = async () => {
+     if (!plan.prodNo) return;
+     if (plan.status === "09") return alert("이미 취소된 건입니다.");
+     if (plan.status >= "04") return alert("생산 진행 중이거나 완료된 건은 취소 불가합니다.");
+
+     if (!window.confirm("정말 이 생산 계획을 취소하시겠습니까?\n(예약된 자재는 모두 반환됩니다)")) return;
+
+     try {
+       const res = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/cancel`, { method: "PUT" });
+       if (!res.ok) return alert(await res.text());
+       
+       setPlan(p => ({...p, status: "09"}));
+       await calcMrp(plan.itemCd, plan.planQty); 
+       await fetchDetailLogs(plan.prodNo);
+
+       setMessage("⛔ 취소됨 (자재 반환 완료)");
+     } catch(e) { alert(e.message); }
+  };
+
   const handleNext = async () => {
-    if (isFullyLocked) return alert("이미 완료된 건입니다.");
+    if (isFullyLocked) return alert("이미 공정 완료된 건입니다.");
     if (!plan.itemCd || safeNum(plan.planQty) <= 0) return alert("제품과 수량을 입력하세요.");
 
     try {
+      // 01 -> 02
       if (plan.status === "01" || !plan.prodNo) {
         await saveProdToDb("02");
         return; 
       }
 
+      // 02 -> 03 (예약)
       if (plan.status === "02") {
-        if (!allMrpOk && !window.confirm("자재가 부족합니다. 계속 진행하시겠습니까?")) return;
+        if (!allMrpOk) {
+            const shortages = [];
+            Object.entries(mrp).forEach(([matCd, data]) => {
+                if (!data.ok) {
+                    const needed = data.required;
+                    const avail = data.totals?.availQty || 0;
+                    const missing = needed - avail;
+                    if (missing > 0) shortages.push({ code: matCd, name: getItemNm(matCd), qty: missing });
+                }
+            });
+
+            const msgList = shortages.map(s => ` • ${s.name}: ${s.qty}개`).join("\n");
+            if (window.confirm(`자재 재고가 부족합니다.\n\n[부족 내역]\n${msgList}\n\n부족한 만큼 신규 발주를 진행하시겠습니까?`)) {
+                 const paramStr = shortages.map(s => `${s.code}:${s.qty}`).join(",");
+                 window.location.href = `/구매영업관리/발주관리?autoOrder=${encodeURIComponent(paramStr)}`; 
+                 return;
+            } else {
+                 return;
+            }
+        }
         
         const allocList = [];
         Object.keys(manualAlloc).forEach(matCd => {
@@ -424,6 +463,7 @@ export default function 생산계획() {
         return;
       }
 
+      // 03 -> 04 (생산시작/소모)
       if (plan.status === "03") {
         const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/consume`, { method: "POST" });
         if (!r.ok) return alert(await r.text());
@@ -431,12 +471,23 @@ export default function 생산계획() {
         setPlan(p => ({...p, status: "04"}));
         await saveProdToDb("04");
         await fetchDetailLogs(plan.prodNo);
+        setMessage("⚙ 생산중... (자재가 투입되었습니다)");
         return;
       }
 
+      // 04 -> 05 (생산완료 - 불량 수량 입력 화면 진입)
       if (plan.status === "04") {
+        await saveProdToDb("05"); // 상태만 05로 변경
+        setPlan(p => ({...p, status: "05"}));
+        setMessage("✅ 생산 종료. 불량 수량을 입력하세요.");
+        return;
+      }
+
+      // 05 -> 06 (결과저장 -> 창고배정으로 이동)
+      if (plan.status === "05") {
         if (safeNum(plan.badQty) < 0) return alert("불량수량 오류");
         
+        // 결과 저장 API 호출
         const r = await fetch(`${API.prods}/${encodeURIComponent(plan.prodNo)}/results2`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -446,19 +497,30 @@ export default function 생산계획() {
         });
         if (!r.ok) return alert(await r.text());
 
-        setPlan(p => ({...p, status: "05"}));
-        await saveProdToDb("05");
+        // 상태를 06(창고배정)으로 변경
+        await saveProdToDb("06");
+        setPlan(p => ({...p, status: "06"}));
         await fetchDetailLogs(plan.prodNo);
+        setMessage("📦 창고를 배정해 주세요.");
         return;
       }
+
     } catch (e) { alert(e.message); }
   };
 
+  // ✅ [수정] 입고 실행 (06 -> 07 종료)
   const handleReceive = async () => {
-    if (plan.status !== "05") return;
-    if (isReceived) return alert("이미 완료되었습니다.");
+    if (plan.status !== "06") return; 
+    if (isProcessDone) return alert("이미 공정 완료되었습니다.");
     if (goodQty <= 0) return alert("입고할 수량이 없습니다.");
-    if (totalReceiveQty !== goodQty) return alert(`입고 총량(${totalReceiveQty})이 정상품 수량(${goodQty})과 다릅니다.`);
+    
+    // 검증
+    const invalidLines = receiveLines.filter(l => safeNum(l.qty) > 0 && !l.whCd);
+    if (invalidLines.length > 0) return alert("창고가 선택되지 않은 항목이 있습니다.");
+
+    if (totalReceiveQty !== goodQty) {
+        return alert(`입고 수량 합계(${totalReceiveQty})가 정상품 수량(${goodQty})과 다릅니다.`);
+    }
 
     const allocations = receiveLines.filter(l => l.whCd && l.qty > 0);
     if(allocations.length === 0) return alert("입고할 창고와 수량을 입력하세요.");
@@ -474,10 +536,12 @@ export default function 생산계획() {
         });
         if (!res.ok) return alert(await res.text());
         
-        setMessage(`✅ 입고 완료`);
-        setIsReceived(true);
+        // 상태 07 (공정완료)
+        await saveProdToDb("07"); 
+        setPlan(p => ({...p, status: "07"}));
+        setMessage(`🏁 공정 완료! (모든 절차가 종료되었습니다)`);
         await fetchDetailLogs(plan.prodNo);
-    } catch(e) { alert("입고 오류"); }
+    } catch(e) { alert("입고 오류 발생"); }
   };
 
   return (
@@ -487,7 +551,10 @@ export default function 생산계획() {
         <div className="prodplan-header-right">
           <div className="prodplan-stage">현재: {STATUS_LABEL[plan.status] ?? plan.status}</div>
           <button className="pp-btn" onClick={handleShowLog}>📜 생산 이력</button>
-          <button className="pp-btn btn-cancel" onClick={() => {}}>취소</button>
+          
+          <button className="pp-btn btn-cancel" onClick={handleCancel} disabled={isFullyLocked || plan.status === '09'}>
+              {plan.status === '09' ? '취소됨' : '취소'}
+          </button>
         </div>
       </div>
 
@@ -512,18 +579,22 @@ export default function 생산계획() {
            <div className="pp-panel-header">
              <div>📝 계획 입력</div>
              <div className="pp-actions">
-               {!isFullyLocked && <button className="pp-btn btn-save" onClick={() => saveProdToDb()}>저장</button>}
+               {!isFullyLocked && plan.status !== '09' && <button className="pp-btn btn-save" onClick={() => saveProdToDb()}>저장</button>}
                
-               {/* ✅ [신규] 이전단계 버튼 (02, 03 상태일 때 표시) */}
                {(plan.status === "02" || plan.status === "03") && (
                    <button className="pp-btn" onClick={handlePrevStep} style={{backgroundColor:"#fff3e0", color:"#e65100", border:"1px solid #ffcc80"}}>
                        {plan.status === "03" ? "⏪ 예약취소" : "⏪ 확정취소"}
                    </button>
                )}
 
-               {!isFullyLocked && (
+               {!isFullyLocked && plan.status !== '09' && (
                    <button className="pp-btn btn-next" onClick={handleNext}>
-                     {plan.status === "02" ? "예약실행" : "다음단계"}
+                     {/* 상태별 버튼 텍스트 변경 */}
+                     {plan.status === "02" ? "예약실행" 
+                      : plan.status === "03" ? "생산시작(소모)" 
+                      : plan.status === "04" ? "생산종료"
+                      : plan.status === "05" ? "창고배정"
+                      : "다음단계"}
                    </button>
                )}
              </div>
@@ -546,27 +617,44 @@ export default function 생산계획() {
                         <input className="pp-input" value={STATUS_LABEL[plan.status]} readOnly/>
                     </div>
                  </div>
-                 {plan.status === "04" && (
-                    <div className="pp-row">
-                        <div className="pp-field"><label>불량수량</label><input className="pp-input" type="number" name="badQty" value={plan.badQty} onChange={handlePlanChange}/></div>
-                        <div className="pp-field"><label>정상품</label><input className="pp-input" value={goodQty} readOnly/></div>
+                 
+                 {/* 05(생산완료) 이상이면 불량수량 입력창 표시 */}
+                 {plan.status >= "05" && (
+                    <div className="pp-row" style={{border:"2px solid #2196f3", padding:10, borderRadius:4, background:"#e3f2fd"}}>
+                        <div className="pp-field"><label style={{color:"#1565c0", fontWeight:"bold"}}>불량수량 입력</label>
+                            <input className="pp-input" type="number" name="badQty" value={plan.badQty} onChange={handlePlanChange} 
+                                   readOnly={plan.status >= "06"} autoFocus={plan.status === "05"}/>
+                        </div>
+                        <div className="pp-field"><label>정상품 (계산됨)</label>
+                            <input className="pp-input" value={goodQty} readOnly style={{fontWeight:"bold"}}/>
+                        </div>
                     </div>
                  )}
-                 {plan.status === "05" && (
+
+                 {/* 06(창고배정) 이상이면 창고배정 UI 표시 */}
+                 {plan.status >= "06" && (
                     <div className="pp-receive-box">
-                        <div className="pp-section-title">입고 창고 지정 (잔여: {goodQty - totalReceiveQty})</div>
+                        <div className="pp-section-title">
+                            입고 창고 지정 
+                            <span style={{color: (goodQty - totalReceiveQty) !== 0 ? "red" : "green", marginLeft: 8}}>
+                                (잔여: {goodQty - totalReceiveQty})
+                            </span>
+                        </div>
                         {receiveLines.map((line, idx) => (
                             <div key={idx} className="pp-row" style={{marginBottom:4}}>
-                                <select className="pp-input" style={{flex:2}} value={line.whCd} onChange={(e) => handleReceiveLineChange(idx, 'whCd', e.target.value)} disabled={isReceived}>
+                                <select className="pp-input" style={{flex:2}} value={line.whCd} onChange={(e) => handleReceiveLineChange(idx, 'whCd', e.target.value)} disabled={isFullyLocked}>
                                     <option value="">창고선택</option>
                                     {whs.map(w => <option key={w.whCd} value={w.whCd}>{w.whNm}</option>)}
                                 </select>
-                                <input className="pp-input" style={{flex:1}} type="number" value={line.qty} onChange={(e) => handleReceiveLineChange(idx, 'qty', e.target.value)} disabled={isReceived} placeholder="수량"/>
-                                {!isReceived && <button className="pp-btn" onClick={() => removeReceiveLine(idx)}>-</button>}
+                                <input className="pp-input" style={{flex:1}} type="number" value={line.qty} onChange={(e) => handleReceiveLineChange(idx, 'qty', e.target.value)} disabled={isFullyLocked} placeholder="수량"/>
+                                {!isFullyLocked && <button className="pp-btn" onClick={() => removeReceiveLine(idx)}>-</button>}
                             </div>
                         ))}
-                        {!isReceived && <button className="pp-btn" style={{width:"100%", marginBottom:10}} onClick={addReceiveLine}>+ 창고 추가</button>}
-                        <button className="pp-btn btn-save" style={{width:"100%"}} onClick={handleReceive} disabled={isReceived}>{isReceived ? "입고완료됨" : "입고확정"}</button>
+                        {!isFullyLocked && <button className="pp-btn" style={{width:"100%", marginBottom:10}} onClick={addReceiveLine}>+ 창고 추가</button>}
+                        
+                        <button className="pp-btn btn-save" style={{width:"100%"}} onClick={handleReceive} disabled={isFullyLocked}>
+                            {isFullyLocked ? "🏁 공정 완료됨" : "입고 및 공정종료"}
+                        </button>
                     </div>
                  )}
               </div>
@@ -595,10 +683,9 @@ export default function 생산계획() {
              </div>
              
              <div className="pp-section-title" style={{marginTop: 10}}>
-                {plan.status < "04" ? "🏗 투입 창고 및 수량 지정 (선택)" : "🔒 확정된 자재 투입 내역"}
+                {plan.status < "04" ? "🏗 투입 창고 및 수량 지정 (선택)" : "🔒 자재 투입 내역"}
              </div>
              <div style={{height: "50%", overflow:"auto"}}>
-               {/* 04(생산중) 전까지는 입력창 표시 (단, 03(예약)은 readOnly) */}
                {plan.status < "04" ? (
                    selectedMrp ? (
                      <table className="pp-table">
@@ -618,7 +705,7 @@ export default function 생산계획() {
                                         style={{width:"100%", border:"none", textAlign:"right", background:"#fff3e0"}}
                                         placeholder="자동"
                                         value={manualVal}
-                                        readOnly={plan.status === "03"} // 예약상태에선 수정 불가 (취소 후 수정)
+                                        readOnly={plan.status === "03" || plan.status === "09"} 
                                         onChange={(e) => handleAllocChange(selectedMatCd, r.whCd, e.target.value)}
                                  />
                                </td>

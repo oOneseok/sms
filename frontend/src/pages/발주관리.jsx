@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom"; // useLocation 추가됨
+import { useNavigate, useLocation } from "react-router-dom"; 
 import "../css/pages/PurchasePage.css";
 
 const API = "http://localhost:8080";
@@ -7,7 +7,7 @@ const API = "http://localhost:8080";
 const STATUS = [
   { v: "p1", t: "등록" },
   { v: "p2", t: "발주확정" },
-  { v: "p3", t: "입고완료" }, // 시스템 전용 (드롭다운에서 숨김 처리 로직 적용됨)
+  { v: "p3", t: "입고완료" }, 
   { v: "p9", t: "취소" },
 ];
 
@@ -19,6 +19,8 @@ export default function PurchasePage() {
 
   const query = new URLSearchParams(location.search);
   const returnPath = query.get("returnPath");
+  // ✅ 추가: 자동 발주 데이터 수신
+  const autoOrderData = query.get("autoOrder"); 
 
   // --- 상태 관리 ---
   const [list, setList] = useState([]);
@@ -32,7 +34,7 @@ export default function PurchasePage() {
   // Master Form
   const [mst, setMst] = useState({
     purchaseCd: "",
-    purchaseDt: "",
+    purchaseDt: new Date().toISOString().split('T')[0], // 오늘 날짜 기본
     custCd: "",
     custEmp: "",
     remark: "",
@@ -63,6 +65,38 @@ export default function PurchasePage() {
     })();
     fetchList();
   }, []);
+
+  // ✅ [신규] 자동 발주 데이터 처리 로직
+  useEffect(() => {
+    if (autoOrderData) {
+      // 1. 파라미터 파싱 (itemCd:qty,itemCd:qty...)
+      const newRows = autoOrderData.split(",").map(pair => {
+        const [itemCd, qty] = pair.split(":");
+        return {
+          _uiId: generateId(),
+          itemCd: itemCd,
+          purchaseQty: qty, // 문자열이어도 input에 잘 들어감
+          status: "p1",
+          remark: "생산 부족분 자동 발주"
+        };
+      });
+
+      // 2. 화면에 반영 (기존 빈 행 제거 후 추가)
+      setEditRows(newRows);
+      
+      // 3. 마스터 정보 초기화 (신규 모드)
+      setMst(prev => ({
+        ...prev,
+        purchaseCd: "", // 신규이므로 비움
+        remark: "생산계획 연동 자동발주"
+      }));
+      setSelectedCd(null); // 선택 해제
+
+      // 4. URL 파라미터 청소 (중복 실행 방지)
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [autoOrderData]);
+
 
   // --- 목록 조회 ---
   const fetchList = async () => {
@@ -135,7 +169,7 @@ export default function PurchasePage() {
   const reset = () => {
     setSelectedCd(null);
     setDetails([]);
-    setMst({ purchaseCd: "", purchaseDt: "", custCd: "", custEmp: "", remark: "" });
+    setMst({ purchaseCd: "", purchaseDt: new Date().toISOString().split('T')[0], custCd: "", custEmp: "", remark: "" });
     setEditRows([emptyRow()]);
   };
 
@@ -146,7 +180,7 @@ export default function PurchasePage() {
   // --- 저장 ---
   const save = async () => {
     try {
-      if (!mst.purchaseDt || !mst.custCd || !editRows.length) throw new Error("필수값 누락");
+      if (!mst.purchaseDt || !mst.custCd || !editRows.length) throw new Error("필수값 누락 (일자, 거래처, 상세품목)");
 
       const payload = {
         purchaseCd: mst.purchaseCd?.trim() || null,
@@ -180,7 +214,7 @@ export default function PurchasePage() {
     }
   };
 
-  // ✅ [수정 1] 실제 URL 경로 '/자재관리/입고관리' 로 연결
+  // 입고 관리 이동
   const handleGoToInbound = (detailRow) => {
     if (!mst.purchaseCd) return;
 
@@ -293,7 +327,7 @@ export default function PurchasePage() {
         <div className="detail-section">
           <div className="form-grid">
             <label className="form-label">발주번호</label>
-            <input className="form-input mono" value={mst.purchaseCd} readOnly style={{background:"#f5f5f5"}} />
+            <input className="form-input mono" value={mst.purchaseCd} readOnly style={{background:"#f5f5f5"}} placeholder="자동생성"/>
             <label className="form-label">발주일자</label>
             <input type="date" className="form-input" value={mst.purchaseDt} onChange={(e) => setMst({...mst, purchaseDt:e.target.value})} />
             <label className="form-label">거래처</label>
@@ -313,8 +347,8 @@ export default function PurchasePage() {
 
           <div className="purchase-detail-editor">
             {editRows.map((r, idx) => {
-              const isNew = !r._seqNo; // 신규 여부
-              const isLocked = r.status === 'p3'; // 입고완료 여부
+              const isNew = !r._seqNo; 
+              const isLocked = r.status === 'p3';
 
               return (
                 <div 
@@ -346,7 +380,6 @@ export default function PurchasePage() {
                     <input type="number" className="form-input" value={r.purchaseQty} onChange={(e)=>setRow(idx,"purchaseQty",e.target.value)} disabled={isLocked} />
                     
                     <label className="form-label">상태</label>
-                    {/* ✅ [수정 2] '입고완료(p3)' 선택 불가 (리스트에서 숨김) */}
                     <select 
                       className="form-input" 
                       value={r.status} 
@@ -355,7 +388,6 @@ export default function PurchasePage() {
                       style={{backgroundColor: (isLocked || isNew) ? '#f5f5f5' : 'white'}}
                     >
                       {STATUS.map(s => {
-                          // 현재 행이 이미 'p3'가 아니라면, 드롭다운 옵션에서 'p3'를 아예 렌더링하지 않음
                           if (s.v === 'p3' && r.status !== 'p3') return null;
                           return <option key={s.v} value={s.v}>{s.t}</option>;
                       })}
