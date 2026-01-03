@@ -1,0 +1,56 @@
+/* 공통 ERP 버튼 스타일: 페이지 전역에서 재사용 */ 
+.erp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  color: #374151;
+  text-align: center;
+  height: 32px; /* 높이 명시 */
+  padding: 0 16px;
+}
+
+.erp-button:hover {
+  background: #f9fafb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.erp-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.erp-button-primary {
+  background: #3b82f6;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.erp-button-primary:hover {
+  background: #2563eb;
+  border-color: #1d4ed8;
+}
+
+.erp-button-default {
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.erp-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+  color: #9ca3af;
+  box-shadow: none;
+}

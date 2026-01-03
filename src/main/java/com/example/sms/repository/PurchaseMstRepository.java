@@ -9,4 +9,6 @@ public interface PurchaseMstRepository extends JpaRepository<PurchaseMst, String
 
     // 최신 발주부터 목록 정렬
     List<PurchaseMst> findAllByOrderByPurchaseDtDesc();
+
+    List<PurchaseMst> findAllByOrderByPurchaseDtAsc();
 }

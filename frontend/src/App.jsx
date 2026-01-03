@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Routes, Route } from 'react-router-dom'
 import './App.css'
 
@@ -15,7 +15,7 @@ import MenuBar from './components/MenuBar'
 import ClickedItemsList from './components/ClickedItemsList'
 import LoginDialog from './components/LoginDialog'
 
-// ✅ [중요] Context import
+// Context import
 import { AuthProvider, useAuth } from './context/AuthContext'
 
 // 페이지 컴포넌트 import
@@ -35,16 +35,10 @@ import BOM관리 from './pages/BOM관리.jsx'
 import 재고관리 from './pages/재고관리.jsx'
 import 입출고이력 from './pages/입출고이력.jsx'
 
-// =========================================================
-// 1. 실제 화면 로직을 담은 컴포넌트 (AuthProvider의 자식이어야 함)
-// =========================================================
 function MainContent() {
   const navigate = useNavigate()
-  
-  // ✅ useAuth는 반드시 AuthProvider 내부(자식)에서만 사용 가능합니다.
-  const { isLoggedIn, loading } = useAuth() 
+  const { isLoggedIn, loading } = useAuth()
 
-  // --- 기존 상태 관리 코드 ---
   const [tabs, setTabs] = useState([])
   const [menuItems, setMenuItems] = useState({})
   const [selectedTab, setSelectedTab] = useState('기준정보관리')
@@ -55,10 +49,8 @@ function MainContent() {
   const [navigationHistory, setNavigationHistory] = useState([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
-  // 1. 메뉴 데이터 로드 (로그인 상태일 때만)
   useEffect(() => {
     if (!isLoggedIn) return;
-
     const fetchMenus = async () => {
       try {
         const response = await fetch('http://localhost:8080/api/menus')
@@ -68,14 +60,9 @@ function MainContent() {
         const newTabs = data.map(item => item.menuNm)
         const newMenuItems = {}
         data.forEach(rootItem => {
-          if (rootItem.children && rootItem.children.length > 0) {
-            newMenuItems[rootItem.menuNm] = rootItem.children.map(child => ({
-              name: child.menuNm,
-              icon: child.menuIcon || '📄'
-            }))
-          } else {
-            newMenuItems[rootItem.menuNm] = []
-          }
+            newMenuItems[rootItem.menuNm] = rootItem.children
+                ? rootItem.children.map(child => ({ name: child.menuNm, icon: child.menuIcon || '📄' }))
+                : []
         })
         setTabs(newTabs)
         setMenuItems(newMenuItems)
@@ -86,7 +73,6 @@ function MainContent() {
     fetchMenus()
   }, [isLoggedIn])
 
-  // 공통 로직
   const nameToPath = (name) => name ? name.replace(/\s+/g, '').replace(/\//g, '') : ''
 
   const handleMenuClick = (item, tabName) => {
@@ -141,7 +127,6 @@ function MainContent() {
 
   return (
     <div className="app">
-      {/* 로그인 안 되어 있으면 로그인창 표시 */}
       {!isLoggedIn && <LoginDialog />}
 
       <Header
@@ -173,29 +158,37 @@ function MainContent() {
       <main className="main-content-area">
         <div className="work-area">
           <div className="blue-gradient-bg"></div>
-          <div className="page-content">
-            {isLoggedIn ? (
-              <Routes>
-                <Route path="/" element={<div className="page-message">메뉴를 선택해주세요.</div>} />
-                <Route path="/기준정보관리/사업장관리" element={<사업장관리 />} />
-                <Route path="/기준정보관리/거래처관리" element={<거래처관리 />} />
-                <Route path="/기준정보관리/품목관리" element={<품목관리 />} />
-                <Route path="/기준정보관리/공정관리" element={<공정관리 />} />
-                <Route path="/기준정보관리/창고관리" element={<창고관리 />} />
-                <Route path="/기준정보관리/BOM관리" element={<BOM관리 />} />
-                <Route path="/구매영업관리/발주관리" element={<발주관리 />} />
-                <Route path="/구매영업관리/주문관리" element={<주문관리 />} />
-                <Route path="/자재관리/입고관리" element={<입고관리 />} />
-                <Route path="/자재관리/재고관리" element={<재고관리 />} />
-                <Route path="/자재관리/출고관리" element={<출고관리 />} />
-                <Route path="/자재관리/입출고이력" element={<입출고이력 />} />
-                <Route path="/생산관리/생산실적관리" element={<생산실적관리 />} />
-                <Route path="/시스템관리/시스템로그" element={<시스템로그 />} />
-              </Routes>
-            ) : (
+
+          {/* 🔥 수정됨: .page-content 래퍼 제거 (각 페이지가 100% 높이 사용 가능하도록) */}
+          {isLoggedIn ? (
+            <Routes>
+              <Route path="/" element={
+                <div className="page-content">
+                  <div className="page-message">메뉴를 선택해주세요.</div>
+                </div>
+              } />
+
+              {/* 관리 페이지들은 work-area 바로 아래 렌더링 */}
+              <Route path="/기준정보관리/사업장관리" element={<사업장관리 />} />
+              <Route path="/기준정보관리/거래처관리" element={<거래처관리 />} />
+              <Route path="/기준정보관리/품목관리" element={<품목관리 />} />
+              <Route path="/기준정보관리/공정관리" element={<공정관리 />} />
+              <Route path="/기준정보관리/창고관리" element={<창고관리 />} />
+              <Route path="/기준정보관리/BOM관리" element={<BOM관리 />} />
+              <Route path="/구매영업관리/발주관리" element={<발주관리 />} />
+              <Route path="/구매영업관리/주문관리" element={<주문관리 />} />
+              <Route path="/자재관리/입고관리" element={<입고관리 />} />
+              <Route path="/자재관리/재고관리" element={<재고관리 />} />
+              <Route path="/자재관리/출고관리" element={<출고관리 />} />
+              <Route path="/자재관리/입출고이력" element={<입출고이력 />} />
+              <Route path="/생산관리/생산실적관리" element={<생산실적관리 />} />
+              <Route path="/시스템관리/시스템로그" element={<시스템로그 />} />
+            </Routes>
+          ) : (
+            <div className="page-content">
               <div className="page-message">로그인이 필요합니다.</div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

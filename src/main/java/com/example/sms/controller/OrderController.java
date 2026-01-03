@@ -20,8 +20,10 @@ public class OrderController {
     private final OrderService orderService;
 
     @GetMapping
-    public ResponseEntity<List<OrderMst>> list() {
-        return ResponseEntity.ok(orderService.getOrderList());
+    public ResponseEntity<List<OrderMst>> list(
+            @RequestParam(defaultValue = "DESC") String sort
+    ) {
+        return ResponseEntity.ok(orderService.getOrderList(sort));
     }
 
     @GetMapping("/{orderCd}")

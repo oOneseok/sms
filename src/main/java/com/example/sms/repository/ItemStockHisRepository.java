@@ -13,11 +13,11 @@ import java.util.List;
 
 public interface ItemStockHisRepository extends JpaRepository<ItemStockHis, String> {
 
-    // 1. 단순 목록 조회 (기존)
+    // 1. 단순 목록 조회
     List<ItemStockHis> findByItemCdOrderByTrxDtDesc(String itemCd);
     List<ItemStockHis> findByWhCdOrderByTrxDtDesc(String whCd);
 
-    // 2. ✅ [추가] 복합 검색 (컨트롤러의 search 메소드 대응)
+    // 2. 복합 검색
     @Query("SELECT h FROM ItemStockHis h " +
             "WHERE (:itemCd IS NULL OR h.itemCd = :itemCd) " +
             "AND (:whCd IS NULL OR h.whCd = :whCd) " +
@@ -30,31 +30,38 @@ public interface ItemStockHisRepository extends JpaRepository<ItemStockHis, Stri
                               @Param("toDt") LocalDateTime toDt,
                               Pageable pageable);
 
+    // ✅ 3. 수불부 조회 (잔고, 참조번호, 품목명 포함)
     @Query(value = """
         SELECT 
             h.stk_his_cd  AS stkHisCd, 
             h.trx_dt      AS trxDt, 
             h.io_type     AS ioType, 
             h.item_cd     AS itemCd, 
+            i.item_nm     AS itemNm,    /* ✅ [추가] 품목명 */
             h.wh_cd       AS whCd, 
             h.qty_delta   AS qty, 
             h.cust_cd     AS custCd, 
+            h.ref_no      AS refNo,     /* ✅ [추가] 참조번호 (발주/주문) */
             h.remark      AS remark,
-            /* ✅ 1. 잔고 계산은 '과거 -> 현재(ASC)' 순서로 차곡차곡 더합니다 */
+            /* 잔고 계산 */
             SUM(h.qty_delta) OVER (
                 PARTITION BY h.item_cd 
                 ORDER BY h.trx_dt ASC, h.stk_his_cd ASC
             ) AS balance
         FROM tb_itemstock_his h
-        WHERE (:itemCd IS NULL OR h.item_cd = :itemCd)
-          AND (:whCd IS NULL OR h.wh_cd = :whCd)
+        LEFT JOIN tb_itemmst i ON h.item_cd = i.item_cd /* ✅ 품목명 조인 */
+        WHERE (:itemCd IS NULL OR :itemCd = '' OR h.item_cd = :itemCd)
+          AND (:whCd IS NULL OR :whCd = '' OR h.wh_cd = :whCd)
           AND (:fromDt IS NULL OR h.trx_dt >= :fromDt)
           AND (:toDt IS NULL OR h.trx_dt <= :toDt)
-        
-        /* ✅ 2. 하지만 화면에 보여줄 때는 '최신(DESC)' 순서로 정렬합니다 */
-        ORDER BY h.trx_dt DESC, h.stk_his_cd DESC
         """,
-            countQuery = "...", // countQuery는 기존 유지
+            countQuery = """
+            SELECT count(*) FROM tb_itemstock_his h
+            WHERE (:itemCd IS NULL OR :itemCd = '' OR h.item_cd = :itemCd)
+              AND (:whCd IS NULL OR :whCd = '' OR h.wh_cd = :whCd)
+              AND (:fromDt IS NULL OR h.trx_dt >= :fromDt)
+              AND (:toDt IS NULL OR h.trx_dt <= :toDt)
+            """,
             nativeQuery = true)
     Page<HistoryWithBalanceProjection> findHistoryWithBalance(
             @Param("itemCd") String itemCd,
@@ -64,16 +71,18 @@ public interface ItemStockHisRepository extends JpaRepository<ItemStockHis, Stri
             Pageable pageable
     );
 
-    // Native Query 결과를 받아줄 인터페이스 (Projection)
+    // ✅ Projection 인터페이스 수정
     interface HistoryWithBalanceProjection {
         String getStkHisCd();
         LocalDateTime getTrxDt();
         String getIoType();
         String getItemCd();
+        String getItemNm();
         String getWhCd();
         BigDecimal getQty();
-        BigDecimal getBalance(); // ✅ 계산된 잔고
+        BigDecimal getBalance();
         String getCustCd();
+        String getRefNo();
         String getRemark();
     }
 }

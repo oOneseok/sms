@@ -19,5 +19,6 @@ public class StockHistoryDto {
     private BigDecimal balance; // 누적 잔고
     private String custCd;      // 거래처 코드
     private String custNm;      // 거래처 명 (화면 표시용)
+    private String refNo;
     private String remark;      // 비고
 }

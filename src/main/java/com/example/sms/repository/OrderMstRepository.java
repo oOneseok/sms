@@ -9,4 +9,6 @@ public interface OrderMstRepository extends JpaRepository<OrderMst, String> {
 
     // 최신 주문부터 목록 정렬
     List<OrderMst> findAllByOrderByOrderDtDesc();
+
+    List<OrderMst> findAllByOrderByOrderDtAsc();
 }

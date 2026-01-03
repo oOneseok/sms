@@ -1,18 +1,20 @@
 package com.example.sms.service;
 
-import com.example.sms.entity.ItemMst; // ItemMst import
+import com.example.sms.entity.ItemMst;
 import com.example.sms.entity.PurchaseDetIdMst;
 import com.example.sms.entity.PurchaseDetMst;
 import com.example.sms.entity.PurchaseMst;
-import com.example.sms.repository.ItemRepository; // ItemRepository import
+import com.example.sms.repository.ItemRepository;
 import com.example.sms.repository.PurchaseDetMstRepository;
 import com.example.sms.repository.PurchaseMstRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime; // ✅ 추가됨
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,12 +26,24 @@ public class PurchaseService {
 
     private final PurchaseMstRepository purchaseMstRepository;
     private final PurchaseDetMstRepository purchaseDetMstRepository;
-    private final ItemRepository itemRepository; // ✅ 품목 이름 조회를 위해 추가
-    private final LogService logService;         // ✅ 로그 서비스
+    private final ItemRepository itemRepository;
+    private final LogService logService;
+
+    // ✅ ID 생성을 위한 시간 포맷 (yyyyMMddHHmmssSSS)
+    private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     @Transactional(readOnly = true)
-    public List<PurchaseMst> getPurchaseList() {
-        return purchaseMstRepository.findAllByOrderByPurchaseDtDesc();
+    public List<PurchaseMst> getPurchaseList(String sortDirection) {
+        // 정렬 기준 컬럼: purchaseDt (발주일자)
+        Sort sort = Sort.by("purchaseDt");
+
+        if ("ASC".equalsIgnoreCase(sortDirection)) {
+            sort = sort.ascending(); // 오름차순 (과거 -> 최신)
+        } else {
+            sort = sort.descending(); // 내림차순 (최신 -> 과거)
+        }
+
+        return purchaseMstRepository.findAll(sort);
     }
 
     @Transactional(readOnly = true)
@@ -44,7 +58,7 @@ public class PurchaseService {
     }
 
     /**
-     * 발주 저장 (품목명 로그 기록 추가)
+     * ✅ 발주 저장 (ID 자동 생성 로직 변경됨)
      */
     @Transactional
     public String savePurchase(
@@ -62,7 +76,9 @@ public class PurchaseService {
         String actionType = "등록";
 
         if (!hasCd) {
-            purchaseCd = generatePurchaseCd(purchaseDt);
+            // ✅ [수정됨] P + 생성일시(밀리초포함) 로 ID 생성
+            // 예: P20231231123000123
+            purchaseCd = "P" + LocalDateTime.now().format(TS);
         } else {
             purchaseCd = purchaseCd.trim();
         }
@@ -83,7 +99,7 @@ public class PurchaseService {
         mst.setRemark(remark);
         purchaseMstRepository.save(mst);
 
-        // ✅ 품목 이름을 수집할 리스트 생성
+        // 품목 이름을 수집할 리스트 생성
         List<String> purchasedItemNames = new ArrayList<>();
 
         // 상세 저장
@@ -94,7 +110,7 @@ public class PurchaseService {
             if (itemCd == null || itemCd.isBlank()) throw new IllegalArgumentException("품목코드는 필수입니다.");
             if (d.getPurchaseQty() == null || d.getPurchaseQty() <= 0) throw new IllegalArgumentException("발주수량은 1 이상이어야 합니다.");
 
-            // ✅ 품목 정보 조회 및 이름 수집
+            // 품목 정보 조회 및 이름 수집
             ItemMst itemMst = itemRepository.findById(itemCd)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 품목: " + itemCd));
 
@@ -110,7 +126,7 @@ public class PurchaseService {
             purchaseDetMstRepository.save(d);
         }
 
-        // ✅ 로그 메시지 생성 (예: "발주품목: 원단A 외 2건")
+        // 로그 메시지 생성
         String itemLogInfo;
         if (purchasedItemNames.isEmpty()) {
             itemLogInfo = "품목 없음";
@@ -122,7 +138,7 @@ public class PurchaseService {
             }
         }
 
-        // ✅ 로그 저장 (상세 내용 포함)
+        // 로그 저장
         logService.saveLog("발주 관리", actionType, purchaseCd,
                 "거래처: " + (custCd == null ? "-" : custCd),
                 itemLogInfo);
@@ -143,24 +159,6 @@ public class PurchaseService {
         purchaseDetMstRepository.saveAll(dets);
     }
 
-    private String generatePurchaseCd(LocalDate purchaseDt) {
-        String ymd = purchaseDt.format(DateTimeFormatter.BASIC_ISO_DATE);
-        String prefix = "P" + ymd + "-";
-
-        int max = purchaseMstRepository.findAll().stream()
-                .map(PurchaseMst::getPurchaseCd)
-                .filter(cd -> cd != null && cd.startsWith(prefix))
-                .map(cd -> cd.substring(prefix.length()))
-                .mapToInt(s -> {
-                    try { return Integer.parseInt(s); }
-                    catch (Exception e) { return 0; }
-                })
-                .max()
-                .orElse(0);
-
-        return prefix + String.format("%03d", max + 1);
-    }
-
     @Transactional(readOnly = true)
     public List<PurchaseDetMst> getWaitingForInboundList() {
         return purchaseDetMstRepository.findAll().stream()
@@ -179,4 +177,5 @@ public class PurchaseService {
 
         det.setStatus(newStatus);
     }
+
 }

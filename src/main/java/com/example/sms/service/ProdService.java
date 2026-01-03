@@ -30,10 +30,18 @@ public class ProdService {
     private final ItemIoRepository itemIoRepository;
     private final WhMstRepository whMstRepository;
 
+    // 날짜 포맷 (년월일시분초밀리초)
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
-    private String newProdNo() { return "P" + LocalDateTime.now().format(TS); }
-    private String newStkHisCd() { return "STK" + LocalDateTime.now().format(TS); }
+    // ✅ [수정됨] Prod ID Prefix "P" -> "PR" (예: PR20231231123000123)
+    private String newProdNo() {
+        return "PR" + LocalDateTime.now().format(TS);
+    }
+
+    private String newStkHisCd() {
+        return "STK" + LocalDateTime.now().format(TS);
+    }
+
     private String newIoCd() {
         String v = "IO" + LocalDateTime.now().format(TS);
         return v.length() > 20 ? v.substring(0, 20) : v;
@@ -59,6 +67,7 @@ public class ProdService {
     // =========================================================
     @Transactional
     public Prod createProd(Prod body) {
+        // ID가 없으면 자동 생성
         String prodNo = (body.getProdNo() == null || body.getProdNo().isBlank())
                 ? newProdNo()
                 : body.getProdNo();
@@ -155,13 +164,12 @@ public class ProdService {
         return lines;
     }
 
-    // ✅ [수정] 예약 실행 (중복 실행 방지 추가)
     @Transactional
     public ReserveResult reserveMaterials(String prodNo, ProdReserveReq req) {
         Prod prod = loadProd(prodNo);
         if (!"02".equals(prod.getStatus())) throw new IllegalArgumentException("STATUS=02에서만 예약 가능");
 
-        // 🔥 [중복 예약 방지] 이미 예약된 내역이 있으면 에러 혹은 스킵
+        // 중복 예약 방지
         List<ItemIo> existing = itemIoRepository.findByRefTbAndRefCdAndIoType("TB_PROD", prodNo, "RESERVE");
         if (!existing.isEmpty()) {
             throw new IllegalArgumentException("이미 예약된 생산계획입니다.");
@@ -220,7 +228,6 @@ public class ProdService {
 
     @Transactional
     public void unreserveMaterials(String prodNo, String remark) {
-        // 중복 해제 방지
         List<ItemIo> alreadyUnreserved = itemIoRepository.findByRefTbAndRefCdAndIoType("TB_PROD", prodNo, "UNRESERVE");
         if (!alreadyUnreserved.isEmpty()) return;
 

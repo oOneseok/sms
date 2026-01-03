@@ -5,48 +5,23 @@
   box-sizing: border-box;
 }
 
+body, html {
+  width: 100%;
+  height: 100%; /* html, body에도 높이 100% 필수 */
+  overflow: hidden; /* 브라우저 전체 스크롤 방지 */
+}
+
 body {
   font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   background-color: #c0c0c0;
 }
 
 .app {
   width: 100%;
-  height: 100vh;
+  height: 100vh; /* 뷰포트 높이 100% */
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* 내부 스크롤만 허용 */
   background-color: #ffffff;
   border: 2px solid #808080;
-  box-shadow: inset 1px 1px 0px 0px #ffffff, inset -1px -1px 0px 0px #808080;
-}
-
-/* [수정] 메인 영역 꽉 채우기 설정 */
-.main-content-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* 스크롤바 중복 방지 */
-  background-color: #6a8db9; /* 🔥 배경 파란색 유지 */
-  padding: 10px; /* 🔥 파란색 테두리가 보이게 여백 10px 줌 */
-  box-sizing: border-box;
-}
-
-.work-area {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 라우터로 바뀌는 페이지가 들어갈 공간 */
-.page-content {
-  flex: 1; /* 남은 공간 꽉 채우기 */
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }

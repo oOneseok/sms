@@ -3,15 +3,15 @@ import { useSearchParams, useNavigate } from 'react-router-dom'; // ✅ useNavig
 import '../css/pages/출입고관리.css';
 
 function InboundManagement() {
-    const [searchParams] = useSearchParams(); 
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate(); // ✅ 네비게이션 훅 초기화
-    
+
     // 탭 상태 (waiting: 입고대기, history: 입고이력)
     const [activeTab, setActiveTab] = useState('waiting');
-    
+
     const [waitingList, setWaitingList] = useState([]);
     const [historyList, setHistoryList] = useState([]);
-    const [warehouseOptions, setWarehouseOptions] = useState([]); 
+    const [warehouseOptions, setWarehouseOptions] = useState([]);
     const [selectedRow, setSelectedRow] = useState(null);
 
     // [초기 로딩 및 URL 감지]
@@ -43,7 +43,7 @@ function InboundManagement() {
     useEffect(() => {
         const paramCd = searchParams.get('purchaseCd');
         const paramStatus = searchParams.get('status');
-        
+
         if (activeTab === 'waiting') {
             fetchWaitingList(paramStatus !== 'p3' ? paramCd : null);
         } else {
@@ -53,10 +53,10 @@ function InboundManagement() {
 
     const fetchWarehouseList = async () => {
         try {
-            const res = await fetch('http://localhost:8080/api/whs'); 
+            const res = await fetch('http://localhost:8080/api/whs');
             const data = await res.json();
             const options = data.map(wh => ({
-                code: wh.whCd, 
+                code: wh.whCd,
                 name: `${wh.whNm} (${wh.whCd})`
             }));
             setWarehouseOptions(options);
@@ -69,11 +69,11 @@ function InboundManagement() {
         try {
             const res = await fetch('http://localhost:8080/api/inout/waiting-purchase');
             const data = await res.json();
-            
+
             let formatted = data.map(item => ({
                 ...item,
                 uid: `${item.id.purchaseCd}-${item.id.seqNo}`,
-                toWhCd: '' 
+                toWhCd: ''
             }));
 
             // ✅ URL 파라미터로 넘어온 발주번호가 있으면 필터링
@@ -92,7 +92,7 @@ function InboundManagement() {
         try {
             const res = await fetch('http://localhost:8080/api/inout');
             const data = await res.json();
-            
+
             let filtered = data.filter(item => item.ioType === 'IN');
 
             if (filterCd) {
@@ -113,7 +113,7 @@ function InboundManagement() {
 
     const handleDetailChange = (field, value) => {
         if (!selectedRow) return;
-        setWaitingList(prev => prev.map(row => 
+        setWaitingList(prev => prev.map(row =>
             row.uid === selectedRow.uid ? { ...row, [field]: value } : row
         ));
         setSelectedRow(prev => ({ ...prev, [field]: value }));
@@ -147,7 +147,7 @@ function InboundManagement() {
             if (response.ok) {
                 alert("입고 처리가 완료되었습니다.");
                 const paramCd = searchParams.get('purchaseCd');
-                fetchWaitingList(paramCd); 
+                fetchWaitingList(paramCd);
             } else {
                 const msg = await response.text();
                 alert("처리 실패: " + msg);
@@ -163,10 +163,10 @@ function InboundManagement() {
             {/* ✅ 필터링 상태 알림 바 & 뒤로가기 버튼 */}
             {searchParams.get('purchaseCd') && (
                 <div style={{
-                    padding: '8px 15px', 
-                    background: '#e6f7ff', 
-                    borderBottom: '1px solid #91d5ff', 
-                    fontSize: '13px', 
+                    padding: '8px 15px',
+                    background: '#e6f7ff',
+                    borderBottom: '1px solid #91d5ff',
+                    fontSize: '13px',
                     color: '#0050b3',
                     display: 'flex',
                     alignItems: 'center',
@@ -177,13 +177,13 @@ function InboundManagement() {
                     </span>
                     <div>
                         {/* 🔙 뒤로가기 버튼 추가 */}
-                        <button 
-                            onClick={() => navigate(-1)} 
+                        <button
+                            onClick={() => navigate(-1)}
                             style={{
-                                border: '1px solid #0050b3', 
-                                background: '#0050b3', 
-                                color: 'white', 
-                                cursor: 'pointer', 
+                                border: '1px solid #0050b3',
+                                background: '#0050b3',
+                                color: 'white',
+                                cursor: 'pointer',
                                 borderRadius: '3px',
                                 padding: '2px 10px',
                                 marginRight: '8px'
@@ -193,13 +193,13 @@ function InboundManagement() {
                         </button>
 
                         {/* 전체보기 버튼 */}
-                        <button 
-                            onClick={() => window.location.href='/자재관리/입고관리'} 
+                        <button
+                            onClick={() => window.location.href='/자재관리/입고관리'}
                             style={{
-                                border: '1px solid #1890ff', 
-                                background: '#fff', 
-                                color: '#1890ff', 
-                                cursor: 'pointer', 
+                                border: '1px solid #1890ff',
+                                background: '#fff',
+                                color: '#1890ff',
+                                cursor: 'pointer',
                                 borderRadius: '3px',
                                 padding: '2px 8px'
                             }}
@@ -214,14 +214,14 @@ function InboundManagement() {
                 <div className="inout-header">
                     <h2 className="inout-title">입고 관리 (Inbound)</h2>
                     <div className="header-buttons">
-                        <button 
+                        <button
                             className={`excel-btn ${activeTab === 'waiting' ? 'excel-btn-save' : ''}`}
                             onClick={() => setActiveTab('waiting')}
                             style={{marginRight: '10px'}}
                         >
                             입고 대기 (발주)
                         </button>
-                        <button 
+                        <button
                             className={`excel-btn ${activeTab === 'history' ? 'excel-btn-save' : ''}`}
                             onClick={() => setActiveTab('history')}
                         >
@@ -247,11 +247,11 @@ function InboundManagement() {
                             </thead>
                             <tbody>
                             {activeTab === 'waiting' ? (
-                                waitingList.length === 0 ? 
+                                waitingList.length === 0 ?
                                 <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>데이터가 없습니다.</td></tr> :
                                 waitingList.map(row => (
-                                    <tr 
-                                        key={row.uid} 
+                                    <tr
+                                        key={row.uid}
                                         className={`excel-tr ${selectedRow?.uid === row.uid ? 'selected' : ''}`}
                                         onClick={() => handleRowClick(row)}
                                     >
@@ -293,7 +293,7 @@ function InboundManagement() {
                             <input className="excel-input" value={selectedRow?.purchaseQty || ''} disabled />
 
                             <label>입고 창고 (필수)</label>
-                            <select 
+                            <select
                                 className="excel-input"
                                 value={selectedRow?.toWhCd || ''}
                                 onChange={(e) => handleDetailChange('toWhCd', e.target.value)}
@@ -309,15 +309,15 @@ function InboundManagement() {
                             </select>
 
                             <label>비고</label>
-                            <input 
+                            <input
                                 className="excel-input"
                                 value={selectedRow?.remark || ''}
                                 onChange={(e) => handleDetailChange('remark', e.target.value)}
                                 disabled={!selectedRow}
                             />
 
-                            <button 
-                                className="excel-btn excel-btn-save" 
+                            <button
+                                className="excel-btn excel-btn-save"
                                 onClick={handleConfirmInbound}
                                 disabled={!selectedRow}
                                 style={{width: '100%', marginTop: '15px', height: '35px'}}

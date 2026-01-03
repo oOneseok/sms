@@ -1,6 +1,6 @@
 package com.example.sms.service;
 
-import com.example.sms.entity.ItemMst; // ItemMst import 확인
+import com.example.sms.entity.ItemMst;
 import com.example.sms.entity.OrderDetIdMst;
 import com.example.sms.entity.OrderDetMst;
 import com.example.sms.entity.OrderMst;
@@ -9,10 +9,12 @@ import com.example.sms.repository.OrderDetMstRepository;
 import com.example.sms.repository.OrderMstRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime; // ✅ 추가됨
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +27,23 @@ public class OrderService {
     private final OrderMstRepository orderMstRepository;
     private final OrderDetMstRepository orderDetMstRepository;
     private final ItemRepository itemRepository;
-    private final LogService logService; // ✅ 로그 서비스
+    private final LogService logService;
+
+    // ✅ ID 생성을 위한 시간 포맷 (yyyyMMddHHmmssSSS)
+    private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     @Transactional(readOnly = true)
-    public List<OrderMst> getOrderList() {
-        return orderMstRepository.findAllByOrderByOrderDtDesc();
+    public List<OrderMst> getOrderList(String sortDirection) {
+        // 정렬 기준 컬럼: orderDt (주문일자)
+        Sort sort = Sort.by("orderDt");
+
+        if ("ASC".equalsIgnoreCase(sortDirection)) {
+            sort = sort.ascending(); // 오름차순 (과거 -> 최신)
+        } else {
+            sort = sort.descending(); // 내림차순 (최신 -> 과거)
+        }
+
+        return orderMstRepository.findAll(sort);
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +78,7 @@ public class OrderService {
     }
 
     /**
-     * ✅ 주문 저장 (품목 이름 로그 추가)
+     * ✅ 주문 저장 (ID 자동 생성 로직 변경됨)
      */
     @Transactional
     public String saveOrder(
@@ -82,7 +96,9 @@ public class OrderService {
         String actionType = "등록";
 
         if (!hasCd) {
-            orderCd = generateOrderCd(orderDt);
+            // ✅ [수정됨] O + 생성일시(밀리초포함) 로 ID 생성
+            // 예: O20231231123000123
+            orderCd = "O" + LocalDateTime.now().format(TS);
         } else {
             orderCd = orderCd.trim();
         }
@@ -101,7 +117,7 @@ public class OrderService {
         mst.setRemark(remark);
         orderMstRepository.save(mst);
 
-        // ✅ 품목 이름을 수집할 리스트
+        // 품목 이름을 수집할 리스트
         List<String> orderedItemNames = new ArrayList<>();
 
         // 상세 저장
@@ -112,11 +128,11 @@ public class OrderService {
             if (itemCd == null || itemCd.isBlank()) throw new IllegalArgumentException("품목코드는 필수입니다.");
             if (d.getOrderQty() == null || d.getOrderQty() <= 0) throw new IllegalArgumentException("주문수량은 1 이상이어야 합니다.");
 
-            // ✅ 품목 정보를 조회하여 이름(ItemNm) 가져오기
+            // 품목 정보를 조회하여 이름(ItemNm) 가져오기
             ItemMst itemMst = itemRepository.findById(itemCd)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 품목: " + itemCd));
 
-            // 이름 수집 (예: "삼각김밥")
+            // 이름 수집
             orderedItemNames.add(itemMst.getItemNm());
 
             OrderDetIdMst id = new OrderDetIdMst();
@@ -130,12 +146,11 @@ public class OrderService {
             orderDetMstRepository.save(d);
         }
 
-        // ✅ 로그 메시지 생성 (예: "주문품목: 삼각김밥, 컵라면")
+        // 로그 메시지 생성
         String itemLogInfo;
         if (orderedItemNames.isEmpty()) {
             itemLogInfo = "품목 없음";
         } else {
-            // 품목이 많으면 "삼각김밥 외 2건" 형식, 적으면 나열
             if (orderedItemNames.size() > 3) {
                 itemLogInfo = "주문품목: " + orderedItemNames.get(0) + " 외 " + (orderedItemNames.size() - 1) + "건";
             } else {
@@ -143,10 +158,10 @@ public class OrderService {
             }
         }
 
-        // ✅ 로그 저장 호출 (거래처 + 품목 정보 포함)
+        // 로그 저장
         logService.saveLog("주문 관리", actionType, orderCd,
                 "거래처: " + (custCd == null ? "-" : custCd),
-                itemLogInfo); // contents 파라미터에 품목 정보 전달
+                itemLogInfo);
 
         return orderCd;
     }
@@ -161,20 +176,5 @@ public class OrderService {
 
         // 삭제 로그
         logService.saveLog("주문 관리", "삭제", orderCd, "주문 삭제", "삭제된 주문입니다.");
-    }
-
-    private String generateOrderCd(LocalDate orderDt) {
-        String ymd = orderDt.format(DateTimeFormatter.BASIC_ISO_DATE);
-        String prefix = "O" + ymd + "-";
-        int max = orderMstRepository.findAll().stream()
-                .map(OrderMst::getOrderCd)
-                .filter(cd -> cd != null && cd.startsWith(prefix))
-                .map(cd -> cd.substring(prefix.length()))
-                .mapToInt(s -> {
-                    try { return Integer.parseInt(s); }
-                    catch (Exception e) { return 0; }
-                })
-                .max().orElse(0);
-        return prefix + String.format("%03d", max + 1);
     }
 }

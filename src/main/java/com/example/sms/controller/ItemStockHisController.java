@@ -52,10 +52,12 @@ public class ItemStockHisController {
                     .ioType(h.getIoType())
                     .itemCd(h.getItemCd())
                     .whCd(h.getWhCd())
-                    .qty(h.getQty())       // Projection 메서드명 사용
-                    .balance(h.getBalance()) // ✅ 잔고 매핑!
+                    .qty(h.getQty())
+                    .balance(h.getBalance())
+                    .refNo(h.getRefNo())
                     .custCd(h.getCustCd())
                     .custNm(custNm)
+                    .refNo(h.getRefNo())
                     .remark(h.getRemark())
                     .build();
         });

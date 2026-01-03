@@ -21,10 +21,11 @@ public class PurchaseController {
 
     // 1. 발주 목록 조회
     @GetMapping
-    public ResponseEntity<List<PurchaseMst>> getList() {
-        return ResponseEntity.ok(purchaseService.getPurchaseList());
+    public ResponseEntity<List<PurchaseMst>> getList(
+            @RequestParam(defaultValue = "DESC") String sort
+    ) {
+        return ResponseEntity.ok(purchaseService.getPurchaseList(sort));
     }
-
     // 2. 발주 단건 조회 (헤더 정보)
     @GetMapping("/{purchaseCd}")
     public ResponseEntity<PurchaseMst> getOne(@PathVariable String purchaseCd) {
