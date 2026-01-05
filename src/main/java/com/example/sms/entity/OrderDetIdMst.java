@@ -16,7 +16,6 @@ public class OrderDetIdMst implements Serializable {
     @Column(name = "ORDER_CD", length = 20)
     private String orderCd;
 
-    // ✅ [변경] Purchase처럼 SEQ_NO를 PK로 사용
     @Column(name = "SEQ_NO")
     private Integer seqNo;
 

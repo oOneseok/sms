@@ -7,17 +7,27 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface OrderDetMstRepository extends JpaRepository<OrderDetMst, OrderDetIdMst> {
 
-    // ✅ [변경] 순번(SeqNo) 순서로 조회
+    // 주문코드로 상세 조회 (기존)
     List<OrderDetMst> findByIdOrderCdOrderByIdSeqNoAsc(String orderCd);
 
-    // ✅ [추가] 출고 처리 시 '주문번호 + 품목'으로 상세를 찾기 위해 필요 (PK가 바뀌었으므로)
-    @Query("SELECT d FROM OrderDetMst d WHERE d.id.orderCd = :orderCd AND d.itemCd = :itemCd")
-    Optional<OrderDetMst> findByOrderCdAndItemCd(@Param("orderCd") String orderCd, @Param("itemCd") String itemCd);
-
-    // 삭제용
+    // 주문코드 기준 삭제 (기존)
     void deleteByIdOrderCd(String orderCd);
+
+    // ✅ 전체/검색 공용 (orderCd/itemCd는 부분검색, status는 정확검색)
+    @Query("""
+        SELECT d
+        FROM OrderDetMst d
+        WHERE (:orderCd IS NULL OR :orderCd = '' OR d.id.orderCd LIKE CONCAT('%', :orderCd, '%'))
+          AND (:itemCd IS NULL OR :itemCd = '' OR d.itemCd LIKE CONCAT('%', :itemCd, '%'))
+          AND (:status IS NULL OR :status = '' OR d.status = :status)
+        ORDER BY d.id.orderCd ASC, d.id.seqNo ASC
+    """)
+    List<OrderDetMst> search(
+            @Param("orderCd") String orderCd,
+            @Param("itemCd") String itemCd,
+            @Param("status") String status
+    );
 }
