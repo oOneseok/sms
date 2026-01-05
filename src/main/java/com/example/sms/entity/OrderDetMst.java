@@ -15,16 +15,18 @@ import lombok.ToString;
 @Table(name = "TB_ORDER_DET")
 public class OrderDetMst {
 
-    // 복합 PK (ORDER_CD + SEQ_NO)
     @EmbeddedId
     private OrderDetIdMst id;
 
-    // ✅ [변경] 아이템 코드는 일반 컬럼으로 관리
     @Column(name = "ITEM_CD", length = 10, nullable = false)
     private String itemCd;
 
     @Column(name = "ORDER_QTY", nullable = false)
     private Integer orderQty;
+
+    // ✅ [추가] 출고창고
+    @Column(name = "WH_CD", length = 10)
+    private String whCd;
 
     @Column(name = "STATUS", length = 2, nullable = false)
     private String status;
