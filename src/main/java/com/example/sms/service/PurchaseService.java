@@ -14,10 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime; // ✅ 추가됨
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,21 +27,26 @@ public class PurchaseService {
     private final ItemRepository itemRepository;
     private final LogService logService;
 
-    // ✅ ID 생성을 위한 시간 포맷 (yyyyMMddHHmmssSSS)
-    private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
-
+    /**
+     * ✅ B 방식: sort 파라미터 받는 목록 조회
+     * sort: "ASC" | "DESC" (기본 DESC)
+     */
     @Transactional(readOnly = true)
-    public List<PurchaseMst> getPurchaseList(String sortDirection) {
-        // 정렬 기준 컬럼: purchaseDt (발주일자)
-        Sort sort = Sort.by("purchaseDt");
+    public List<PurchaseMst> getPurchaseList(String sort) {
+        Sort.Direction dir = "ASC".equalsIgnoreCase(sort)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
 
-        if ("ASC".equalsIgnoreCase(sortDirection)) {
-            sort = sort.ascending(); // 오름차순 (과거 -> 최신)
-        } else {
-            sort = sort.descending(); // 내림차순 (최신 -> 과거)
-        }
+        // PurchaseMst 필드명은 purchaseDt (엔티티 기준)
+        return purchaseMstRepository.findAll(Sort.by(dir, "purchaseDt"));
+    }
 
-        return purchaseMstRepository.findAll(sort);
+    /**
+     * 기존 무인자도 유지 (다른 곳에서 호출 가능)
+     */
+    @Transactional(readOnly = true)
+    public List<PurchaseMst> getPurchaseList() {
+        return getPurchaseList("DESC");
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +61,8 @@ public class PurchaseService {
     }
 
     /**
-     * ✅ 발주 저장 (ID 자동 생성 로직 변경됨)
+     * ✅ 발주 저장 (품목명 로그 기록)
+     * ✅ 개선: itemRepository.findById() 반복 호출 -> findAllById()로 일괄 조회(Map) (SQL 없이 성능 개선)
      */
     @Transactional
     public String savePurchase(
@@ -76,15 +80,12 @@ public class PurchaseService {
         String actionType = "등록";
 
         if (!hasCd) {
-            // ✅ [수정됨] P + 생성일시(밀리초포함) 로 ID 생성
-            // 예: P20231231123000123
-            purchaseCd = "P" + LocalDateTime.now().format(TS);
+            purchaseCd = generatePurchaseCd(purchaseDt);
         } else {
             purchaseCd = purchaseCd.trim();
         }
 
         boolean exists = purchaseMstRepository.existsById(purchaseCd);
-
         if (exists) {
             actionType = "수정";
             purchaseDetMstRepository.deleteByIdPurchaseCd(purchaseCd);
@@ -99,7 +100,17 @@ public class PurchaseService {
         mst.setRemark(remark);
         purchaseMstRepository.save(mst);
 
-        // 품목 이름을 수집할 리스트 생성
+        // ✅ [중요] 품목코드들 일괄 조회해서 Map 생성 (N+1 방지)
+        List<String> itemCdList = details.stream()
+                .map(PurchaseDetMst::getItemCd)
+                .filter(cd -> cd != null && !cd.isBlank())
+                .distinct()
+                .toList();
+
+        Map<String, ItemMst> itemMap = itemRepository.findAllById(itemCdList).stream()
+                .collect(Collectors.toMap(ItemMst::getItemCd, it -> it));
+
+        // ✅ 품목 이름 리스트
         List<String> purchasedItemNames = new ArrayList<>();
 
         // 상세 저장
@@ -110,9 +121,8 @@ public class PurchaseService {
             if (itemCd == null || itemCd.isBlank()) throw new IllegalArgumentException("품목코드는 필수입니다.");
             if (d.getPurchaseQty() == null || d.getPurchaseQty() <= 0) throw new IllegalArgumentException("발주수량은 1 이상이어야 합니다.");
 
-            // 품목 정보 조회 및 이름 수집
-            ItemMst itemMst = itemRepository.findById(itemCd)
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 품목: " + itemCd));
+            ItemMst itemMst = itemMap.get(itemCd);
+            if (itemMst == null) throw new IllegalArgumentException("존재하지 않는 품목: " + itemCd);
 
             purchasedItemNames.add(itemMst.getItemNm());
 
@@ -126,7 +136,7 @@ public class PurchaseService {
             purchaseDetMstRepository.save(d);
         }
 
-        // 로그 메시지 생성
+        // ✅ 로그 메시지 생성
         String itemLogInfo;
         if (purchasedItemNames.isEmpty()) {
             itemLogInfo = "품목 없음";
@@ -138,10 +148,14 @@ public class PurchaseService {
             }
         }
 
-        // 로그 저장
-        logService.saveLog("발주 관리", actionType, purchaseCd,
+        // ✅ 로그 저장
+        logService.saveLog(
+                "발주 관리",
+                actionType,
+                purchaseCd,
                 "거래처: " + (custCd == null ? "-" : custCd),
-                itemLogInfo);
+                itemLogInfo
+        );
 
         return purchaseCd;
     }
@@ -159,6 +173,24 @@ public class PurchaseService {
         purchaseDetMstRepository.saveAll(dets);
     }
 
+    private String generatePurchaseCd(LocalDate purchaseDt) {
+        String ymd = purchaseDt.format(DateTimeFormatter.BASIC_ISO_DATE);
+        String prefix = "P" + ymd + "-";
+
+        int max = purchaseMstRepository.findAll().stream()
+                .map(PurchaseMst::getPurchaseCd)
+                .filter(cd -> cd != null && cd.startsWith(prefix))
+                .map(cd -> cd.substring(prefix.length()))
+                .mapToInt(s -> {
+                    try { return Integer.parseInt(s); }
+                    catch (Exception e) { return 0; }
+                })
+                .max()
+                .orElse(0);
+
+        return prefix + String.format("%03d", max + 1);
+    }
+
     @Transactional(readOnly = true)
     public List<PurchaseDetMst> getWaitingForInboundList() {
         return purchaseDetMstRepository.findAll().stream()
@@ -166,6 +198,9 @@ public class PurchaseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * ✅ 상태 업데이트 (너 코드에서 save 누락되어 있어서 반영 안 될 수 있음 → 저장 추가)
+     */
     @Transactional
     public void updateDetailStatus(String purchaseCd, Integer seqNo, String newStatus) {
         PurchaseDetIdMst id = new PurchaseDetIdMst();
@@ -176,6 +211,6 @@ public class PurchaseService {
                 .orElseThrow(() -> new EntityNotFoundException("발주 상세 정보를 찾을 수 없습니다."));
 
         det.setStatus(newStatus);
+        purchaseDetMstRepository.save(det);
     }
-
 }
