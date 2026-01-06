@@ -27,13 +27,13 @@ public class PurchaseDetMst {
     @Column(name = "PURCHASE_QTY", nullable = false)
     private Integer purchaseQty;
 
-    // ✅ [추가] 입고창고
-    @Column(name = "WH_CD", length = 10)
-    private String whCd;
-
     // 상태 (p1:등록 / p2:확정 / p9:취소)
     @Column(name = "STATUS", length = 2, nullable = false)
     private String status;
+
+    //창고 코드
+    @Column(name = "WH_CD", length = 10)
+    private String whCd;
 
     // 비고
     @Column(name = "REMARK", length = 200)

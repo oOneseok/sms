@@ -67,16 +67,15 @@ public class ProdService {
     // =========================================================
     @Transactional
     public Prod createProd(Prod body) {
-        // ID가 없으면 자동 생성
-        String prodNo = (body.getProdNo() == null || body.getProdNo().isBlank())
-                ? newProdNo()
-                : body.getProdNo();
+        String prodNo = newProdNo();
 
-        if (prodRepository.existsById(prodNo))
+        // 혹시 모를 중복 체크 (거의 발생 안 함)
+        if (prodRepository.existsById(prodNo)) {
             throw new IllegalArgumentException("Already exists: " + prodNo);
+        }
 
         return prodRepository.save(Prod.builder()
-                .prodNo(prodNo)
+                .prodNo(prodNo) // 👈 여기서 생성된 번호 사용
                 .prodDt(body.getProdDt())
                 .itemCd(body.getItemCd())
                 .planQty(nz(body.getPlanQty()))
