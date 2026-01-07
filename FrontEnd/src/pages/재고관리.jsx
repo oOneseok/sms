@@ -418,7 +418,7 @@ export default function 재고관리() {
   if (loadingMasters) {
     return (
       <div className="inventory-page">
-        <div className="page-header">
+        <div className="customer-header">
           <h2>재고 관리</h2>
         </div>
         <div style={{ padding: 20, color: "#666" }}>데이터 로딩중...</div>
@@ -428,7 +428,7 @@ export default function 재고관리() {
 
   return (
     <div className="inventory-page">
-      <div className="page-header">
+      <div className="customer-header">
         <h2>재고 관리</h2>
         {saveToast && <span className="save-toast">저장되었습니다.</span>}
       </div>

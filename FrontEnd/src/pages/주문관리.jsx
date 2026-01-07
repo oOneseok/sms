@@ -1033,9 +1033,9 @@ function 주문관리() {
     const isReadOnly = isConfirmed || isCanceled
 
     return (
-        <div className="order-management-container">
-            <div className="order-management-wrapper">
-                <div className="order-management-header">
+        <div className="customer-management-container">
+              <div className="customer-management-wrapper">
+                <div className="customer-header">
                     <div className="header-left-section">
                         <h2 className="page-title">주문관리</h2>
                         <div className="statistics-info">
