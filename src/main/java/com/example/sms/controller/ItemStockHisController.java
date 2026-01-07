@@ -65,6 +65,45 @@ public class ItemStockHisController {
         return ResponseEntity.ok(dtoPage);
     }
 
+    //목록조회 잔고 미포함
+    @GetMapping("/his")
+    public ResponseEntity<Page<StockHistoryDto>> Iolist(
+            @RequestParam(required = false) String itemCd,
+            @RequestParam(required = false) String whCd,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDt,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDt,
+            Pageable pageable
+    ) {
+        // 1. JPQL search 메서드 호출 (Page<ItemStockHis> 반환)
+        Page<ItemStockHis> page = itemStockHisRepository.search(itemCd, whCd, fromDt, toDt, pageable);
+
+        // 2. DTO 변환 (엔티티 필드에 직접 접근)
+        Page<StockHistoryDto> dtoPage = page.map(h -> {
+            String custNm = "";
+            if (h.getCustCd() != null && !h.getCustCd().isBlank()) {
+                custNm = custRepository.findById(h.getCustCd())
+                        .map(CustMst::getCustNm)
+                        .orElse("");
+            }
+
+            return StockHistoryDto.builder()
+                    .stkHisCd(h.getStkHisCd())
+                    .ioDt(h.getTrxDt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
+                    .ioType(h.getIoType())
+                    .itemCd(h.getItemCd())
+                    .whCd(h.getWhCd())
+                    .qty(h.getQtyDelta())
+                    .balance(java.math.BigDecimal.ZERO)
+                    .refNo(h.getRefNo())
+                    .custCd(h.getCustCd())
+                    .custNm(custNm)
+                    .remark(h.getRemark())
+                    .build();
+        });
+
+        return ResponseEntity.ok(dtoPage);
+    }
+
     // 단건 조회 (필요 시 DTO로 변경 권장, 현재는 엔티티 그대로 반환)
     @GetMapping("/{stkHisCd}")
     public ResponseEntity<ItemStockHis> detail(@PathVariable String stkHisCd) {

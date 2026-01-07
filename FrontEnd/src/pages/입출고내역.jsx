@@ -53,7 +53,7 @@ function 입출고내역() {
                 }
             }
 
-            const res = await fetch(`http://localhost:8080/api/stock_his?${params.toString()}`);
+            const res = await fetch(`http://localhost:8080/api/stock_his/his?${params.toString()}`);
             
             if (res.ok) {
                 const data = await res.json();

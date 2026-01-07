@@ -19,8 +19,8 @@ public interface ItemStockHisRepository extends JpaRepository<ItemStockHis, Stri
 
     // 2. 복합 검색
     @Query("SELECT h FROM ItemStockHis h " +
-            "WHERE (:itemCd IS NULL OR h.itemCd = :itemCd) " +
-            "AND (:whCd IS NULL OR h.whCd = :whCd) " +
+            "WHERE (:itemCd IS NULL OR :itemCd = '' OR h.itemCd LIKE CONCAT('%', :itemCd, '%')) " +
+            "AND (:whCd IS NULL OR :whCd = '' OR h.whCd LIKE CONCAT('%', :whCd, '%')) " +
             "AND (:fromDt IS NULL OR h.trxDt >= :fromDt) " +
             "AND (:toDt IS NULL OR h.trxDt <= :toDt) " +
             "ORDER BY h.trxDt DESC")
@@ -37,11 +37,11 @@ public interface ItemStockHisRepository extends JpaRepository<ItemStockHis, Stri
             h.trx_dt      AS trxDt, 
             h.io_type     AS ioType, 
             h.item_cd     AS itemCd, 
-            i.item_nm     AS itemNm,    /* ✅ [추가] 품목명 */
+            i.item_nm     AS itemNm,
             h.wh_cd       AS whCd, 
             h.qty_delta   AS qty, 
             h.cust_cd     AS custCd, 
-            h.ref_no      AS refNo,     /* ✅ [추가] 참조번호 (발주/주문) */
+            h.ref_no      AS refNo,     
             h.remark      AS remark,
             /* 잔고 계산 */
             SUM(h.qty_delta) OVER (
@@ -49,7 +49,7 @@ public interface ItemStockHisRepository extends JpaRepository<ItemStockHis, Stri
                 ORDER BY h.trx_dt ASC, h.stk_his_cd ASC
             ) AS balance
         FROM tb_itemstock_his h
-        LEFT JOIN tb_itemmst i ON h.item_cd = i.item_cd /* ✅ 품목명 조인 */
+        LEFT JOIN tb_itemmst i ON h.item_cd = i.item_cd
         WHERE (:itemCd IS NULL OR :itemCd = '' OR h.item_cd = :itemCd)
           AND (:whCd IS NULL OR :whCd = '' OR h.wh_cd = :whCd)
           AND (:fromDt IS NULL OR h.trx_dt >= :fromDt)
