@@ -345,7 +345,7 @@ public class ProdService {
 
             itemStockRepository.save(ItemStock.builder().id(id).stockQty(nz(cur.getStockQty()).add(qty)).allocQty(nz(cur.getAllocQty())).build());
 
-            itemStockHisRepository.save(ItemStockHis.builder().stkHisCd(newStkHisCd()).itemCd(itemCd).whCd(whCd).trxDt(LocalDateTime.now()).ioType("PROD_RESULT").qtyDelta(qty).allocDelta(BigDecimal.ZERO).refTb("TB_PROD").refNo(prodNo).refSeq(5).remark("완제품입고").build());
+            itemStockHisRepository.save(ItemStockHis.builder().stkHisCd(newStkHisCd()).itemCd(itemCd).whCd(whCd).trxDt(LocalDateTime.now()).ioType("PROD_RESULT").qtyDelta(qty).allocDelta(BigDecimal.ZERO).refTb("TB_PROD").refNo(prodNo).refSeq(5).remark("생산완료 입고").build());
             requireIntegerForIoQty(qty, "RECEIVE_QTY");
             ItemIo io = new ItemIo();
             io.setIoCd(newIoCd()); io.setIoDt(LocalDate.now().toString()); io.setIoType("PROD_RESULT");
@@ -359,7 +359,7 @@ public class ProdService {
                 .planQty(prod.getPlanQty()).status("07").remark(prod.getRemark()).build());
 
         // ✅ [로그] 완제품 입고
-        logService.saveLog("생산 입고", "입고", prodNo, "입고완료", "완제품 입고 처리됨 (Status 07)");
+        logService.saveLog("생산 입고", "입고", prodNo, "입고완료", "생산 완료 입고");
     }
 
     @Getter @AllArgsConstructor

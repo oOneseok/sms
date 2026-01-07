@@ -4,7 +4,7 @@ import '../css/pages/management-common.css';
 import SearchBar from '../components/SearchBar';
 
 function 입출고내역() {
-    const navigate = useNavigate(); // ✅ 네비게이션 객체 생성
+    const navigate = useNavigate();
 
     // === 상태 관리 ===
     const [historyList, setHistoryList] = useState([]);
@@ -38,7 +38,7 @@ function 입출고내역() {
 
             const params = new URLSearchParams({
                 page: pageIndex,
-                size: 20, 
+                size: 40,
                 sort: `trxDt,${sortOrder.toLowerCase()}`
             });
 
@@ -84,7 +84,6 @@ function 입출고내역() {
         setSortOrder(prev => prev === 'DESC' ? 'ASC' : 'DESC');
     };
 
-    // ✅ [핵심] 더블 클릭 시 페이지 이동 핸들러
     const handleRowDoubleClick = (row) => {
         const refNo = row.refNo;
         if (!refNo) {
@@ -119,7 +118,10 @@ function 입출고내역() {
     
     const getTypeBadge = (type, qty) => {
         if (type === 'RESERVE') {
-            return <span style={{color: '#fa8c16', fontWeight:'bold', background:'#fff7e6', padding:'2px 6px', borderRadius:'4px', border:'1px solid #ffe7ba'}}>예약</span>;
+            return <span style={{color: '#fa8c16', fontWeight:'bold'}}>예약</span>;
+        }
+        if (type === 'UNRESERVE') {
+            return <span style={{color: '#000000ff', fontWeight:'bold'}}>취소</span>;
         }
         if (qty > 0) return <span style={{color: '#1890ff', fontWeight:'bold'}}>입고</span>;
         if (qty < 0) return <span style={{color: '#ff4d4f', fontWeight:'bold'}}>출고</span>;
@@ -206,7 +208,7 @@ function 입출고내역() {
                                             <tr 
                                                 key={row.stkHisCd} 
                                                 className="excel-tr"
-                                                style={{cursor: 'pointer'}} /* ✅ 커서 손가락 모양 */
+                                                style={{cursor: 'pointer'}}
                                                 title="더블 클릭하여 상세 문서로 이동"
                                                 onDoubleClick={() => handleRowDoubleClick(row)} /* ✅ 더블 클릭 이벤트 연결 */
                                             >
@@ -220,7 +222,7 @@ function 입출고내역() {
                                                     {row.qty > 0 ? '+' : ''}{Number(row.qty).toLocaleString()}
                                                 </td>
                                                 <td className="excel-td">{row.custNm || row.custCd}</td>
-                                                <td className="excel-td" style={{fontSize: '12px', color: '#555', fontWeight:'bold', textDecoration:'underline'}}>
+                                                <td className="excel-td" style={{textAlign:'left',fontSize: '12px', color: '#555', fontWeight:'bold'}}>
                                                     {row.refNo}
                                                 </td>
                                                 <td className="excel-td" style={{color: '#666'}}>{row.remark}</td>

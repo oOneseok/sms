@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 public class ItemStockHisController {
 
     private final ItemStockHisRepository itemStockHisRepository;
-    private final CustRepository custRepository; // ✅ 거래처 이름 조회를 위해 추가
+    private final CustRepository custRepository;
 
     // 목록 조회 (잔고 포함)
     @GetMapping
