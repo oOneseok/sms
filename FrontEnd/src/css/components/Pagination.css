@@ -1,0 +1,65 @@
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px; /* reduced spacing */
+    padding: 4px 0; /* moderate clickable area */
+    background-color: #ffffff;
+    flex-shrink: 0;
+    border: none !important;
+    margin-top: auto;
+}
+
+.pagination-btn {
+    min-width: 28px; /* reduced size */
+    height: 28px;
+    padding: 0 6px;
+    border: none !important;
+    background: transparent;
+    background-color: transparent;
+    border-radius: 6px; /* slightly rounded rectangle */
+    font-size: 12px; /* medium font */
+    color: #000000;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+    box-shadow: none !important;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.pagination-btn.nav-btn {
+    font-family: Arial, sans-serif;
+    font-size: 12px; /* medium nav buttons */
+    color: #9ca3af;
+}
+
+.pagination-btn.nav-btn:hover:not(:disabled) {
+    color: #374151;
+    background-color: #f3f4f6 !important;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background-color: #f3f4f6 !important;
+    color: #000000;
+    transform: translateY(-1px);
+}
+
+.pagination-btn.active {
+    background: #eef2ff !important; /* subtle active bg */
+    color: #2563eb;
+    font-weight: 700;
+    border: 1px solid #c7dbff;
+}
+
+.pagination-btn:disabled {
+    color: #d1d5db;
+    cursor: default;
+    background: transparent !important;
+    background-color: transparent !important;
+}
+

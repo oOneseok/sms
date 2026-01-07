@@ -19,14 +19,13 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        // 1. 관리자 계정 초기화 (없으면 생성)
+        // 1. 관리자 계정 (기존 유지: 없으면 생성)
         initAdminUser();
 
-        // 2. 메뉴 데이터 초기화 (없으면 생성)
+        // 2. 메뉴 데이터 (변경: 싹 지우고 다시 생성)
         initMenus();
     }
 
-    // === 1. 관리자 계정 생성 로직 ===
     private void initAdminUser() {
         if (!userRepository.existsById("ADMIN")) {
             UserMst admin = UserMst.builder()
@@ -35,59 +34,62 @@ public class DataInitializer implements CommandLineRunner {
                     .pswd("1234")
                     .build();
             userRepository.save(admin);
-            System.out.println("✅ 초기 관리자 계정(ADMIN) 생성 완료");
+            System.out.println("✅ 관리자 계정 확인 완료");
         }
     }
 
-    // === 2. 메뉴 데이터 생성 로직 ===
+    // === 2. 메뉴 데이터 초기화 (초기화 후 재생성 모드) ===
     private void initMenus() {
-        // (URL은 폴더명이나 대표 경로로 설정, 실제 이동은 하지 않음)
-        createMenu("M10", "기준정보관리", 1, null, null, "/standard");
-        createMenu("M20", "구매/영업관리", 2, null, null, "/sales");
-        createMenu("M30", "자재관리", 3, null, null, "/material");
-        createMenu("M40", "생산관리", 4, null, null, "/production");
-        createMenu("M90", "시스템관리", 9, null, null, "/system");
+        // 🚨 [핵심] 기존 메뉴 데이터를 모두 삭제합니다.
+        // 이렇게 해야 이름/아이콘/구조 변경 사항이 깔끔하게 반영됩니다.
+        menuRepository.deleteAll();
+        System.out.println("🧹 기존 메뉴 데이터 삭제 완료 (초기화)");
 
+        // 1. 대분류 (Root)
+        createMenu("M10", "기준정보관리", 1, null, null, "/기준정보관리");
+        createMenu("M20", "구매/영업관리", 2, null, null, "/구매영업관리");
+        createMenu("M30", "자재관리", 3, null, null, "/자재관리");
+        createMenu("M40", "생산관리", 4, null, null, "/생산관리");
+        createMenu("M90", "시스템관리", 9, null, null, "/시스템관리");
 
-        // 1. 기준정보관리 (M10) 하위
-        createMenu("M1001", "사업장 관리", 1, "📦", "M10", "/standard/business");
-        createMenu("M1002", "거래처 관리", 2, "📋", "M10", "/standard/partner");
-        createMenu("M1003", "품목 관리", 3, "📝", "M10", "/standard/item");
-        createMenu("M1004", "공정 관리", 4, "⚙️", "M10", "/standard/process");
-        createMenu("M1005", "창고 관리", 5, "🏭", "M10", "/standard/warehouse");
-        createMenu("M1006", "BOM 관리", 6, "🧬", "M10", "/standard/bom");
+        // 2. 상세 메뉴 (Children)
 
-        // 2. 구매/영업관리 (M20) 하위
-        createMenu("M2001", "발주 관리", 1, "📄", "M20", "/sales/purchase");
-        createMenu("M2002", "주문 관리", 2, "🛒", "M20", "/sales/order");
+        // [M10] 기준정보관리
+        createMenu("M1001", "사업장 관리", 1, "📦", "M10", "/기준정보관리/사업장관리");
+        createMenu("M1002", "거래처 관리", 2, "📋", "M10", "/기준정보관리/거래처관리");
+        createMenu("M1003", "품목 관리", 3, "📝", "M10", "/기준정보관리/품목관리");
+        createMenu("M1004", "공정 관리", 4, "⚙️", "M10", "/기준정보관리/공정관리");
+        createMenu("M1005", "창고 관리", 5, "🏭", "M10", "/기준정보관리/창고관리");
+        createMenu("M1006", "BOM 관리", 6, "📋", "M10", "/기준정보관리/BOM관리");
 
-        // 3. 자재관리 (M30) 하위
-        createMenu("M3001", "입고 관리", 1, "📥", "M30", "/material/inbound");
-        createMenu("M3002", "재고 관리", 2, "📦", "M30", "/material/stock");
-        createMenu("M3003", "출고 관리", 3, "📤", "M30", "/material/outbound");
-        createMenu("M3004", "입출고 이력", 4, "📜", "M30", "/material/history");
+        // [M20] 구매/영업관리
+        createMenu("M2001", "발주 관리", 1, "📄", "M20", "/구매영업관리/발주관리");
+        createMenu("M2002", "주문 관리", 2, "📦", "M20", "/구매영업관리/주문관리");
 
-        // 4. 생산관리 (M40) 하위
-        createMenu("M4001", "생산 실적 관리", 1, "📅", "M40", "/production/plan");
+        // [M30] 자재관리
+        createMenu("M3001", "입고 관리", 1, "📤", "M30", "/자재관리/입고관리");
+        createMenu("M3002", "출고 관리", 2, "📥", "M30", "/자재관리/출고관리");
+        createMenu("M3003", "재고 관리", 3, "📋", "M30", "/자재관리/재고관리");
+        createMenu("M3004", "입출고 내역", 4, "📊", "M30", "/자재관리/입출고내역");
 
-        // 5. 시스템 관리 (M90) 하위
-        createMenu("M9001", "시스템 로그", 1, "💻", "M90", "/system/log");
+        // [M40] 생산관리
+        createMenu("M4001", "생산 관리", 1, "📊", "M40", "/생산관리/생산관리");
+
+        // [M90] 시스템관리
+        createMenu("M9001", "시스템 로그", 1, "📋", "M90", "/시스템관리/시스템로그");
+
+        System.out.println("✅ 최신 메뉴 데이터 생성 완료");
     }
 
-    // 메뉴 생성 헬퍼 메서드 (URL 파라미터 추가됨)
     private void createMenu(String menuId, String menuNm, int seqNo, String icon, String parentId, String url) {
-        // 이미 존재하면 건너뜀 (중복 방지)
-        if (menuRepository.existsById(menuId)) {
-            return;
-        }
+        // 🚨 [변경] existsById 체크 삭제 -> 무조건 새로 저장(덮어쓰기)
 
-        // 부모 메뉴 찾기
         MenuMst parent = null;
         if (parentId != null) {
+            // 부모 메뉴는 방금 위에서 생성했으므로 findById로 찾아서 연결
             parent = menuRepository.findById(parentId).orElse(null);
         }
 
-        // 엔티티 빌더 사용
         MenuMst menu = MenuMst.builder()
                 .menuId(menuId)
                 .menuNm(menuNm)
@@ -98,6 +100,5 @@ public class DataInitializer implements CommandLineRunner {
                 .build();
 
         menuRepository.save(menu);
-        System.out.println("✅ 메뉴 DB 등록: " + menuNm + " (" + menuId + ")");
     }
 }

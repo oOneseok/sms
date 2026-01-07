@@ -39,5 +39,13 @@ public interface ItemRepository extends JpaRepository<ItemMst, String> {
     List<ItemMst> searchByTypesAndText(@Param("typeCds") List<String> typeCds,
                                        @Param("searchText") String searchText);
 
+    @Query(value = """
+    SELECT * FROM TB_ITEMMST i
+    WHERE i.ITEM_FLAG = :itemFlag
+    ORDER BY i.ITEM_CD
+""", nativeQuery = true)
+    List<ItemMst> findByItemFlag(@Param("itemFlag") String itemFlag);
+
+
     void deleteByTypeCd(String typeCd);
 }

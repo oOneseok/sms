@@ -3,6 +3,7 @@ package com.example.sms.controller;
 import com.example.sms.dto.OrderDetDto;
 import com.example.sms.dto.OrderDto;
 import com.example.sms.entity.OrderDetMst;
+import com.example.sms.entity.OrderMst;
 import com.example.sms.service.OrderService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +21,17 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    // ✅ 1) 주문 목록 조회 (custNm 포함)
+    // ✅ 1) 주문 목록 조회 (details 포함)
     @GetMapping
-    public ResponseEntity<List<OrderDto>> list(
+    public ResponseEntity<List<OrderMst>> list(
             @RequestParam(defaultValue = "DESC") String sort
     ) {
-        return ResponseEntity.ok(orderService.getOrderListDto(sort));
+        List<OrderMst> orderList = orderService.getOrderList(sort);
+        // 각 OrderMst에 상세 정보(details)를 채워 넣음
+        orderList.forEach(order ->
+                order.setDetails(orderService.getOrderDetails(order.getOrderCd()))
+        );
+        return ResponseEntity.ok(orderList);
     }
 
     // ✅ 2) 주문 단건 조회 (custNm 포함)

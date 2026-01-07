@@ -29,7 +29,9 @@ public class ItemInOutService {
 
     // 날짜 및 상세 정보 조회를 위한 레포지토리
     private final PurchaseMstRepository purchaseMstRepository;
+    private final PurchaseDetMstRepository purchaseDetMstRepository;
     private final OrderMstRepository orderMstRepository;
+    private final OrderDetMstRepository orderDetMstRepository;
     private final CustRepository custRepository;
 
     // 대기 목록 조회를 위한 서비스
@@ -84,7 +86,7 @@ public class ItemInOutService {
 
             resultList.add(ItemInOutDto.builder()
                     .id("WAIT-IN-" + det.getId().getPurchaseCd() + "-" + det.getId().getSeqNo())
-                    .ioCd(det.getId().getPurchaseCd()) // 아직 입고번호 없으므로 발주번호 표시
+                    .ioCd(det.getId().getPurchaseCd()) // 아직 입고번호f 없으므로 발주번호 표시
                     .ioDt(pDate) // 발주일자를 기준일로 사용
                     .ioType("WAIT_IN") // 입고 대기
                     .itemCd(det.getItemCd())
@@ -193,35 +195,65 @@ public class ItemInOutService {
         updateStock(itemCd, toWhCd, BigDecimal.valueOf(qty), true);
         saveStockHistory(ioCd, itemCd, toWhCd, "IN", BigDecimal.valueOf(qty), "TB_PURCHASE", purchaseCd);
         purchaseService.updateDetailStatus(purchaseCd, seqNo, "p3");
+        purchaseService.updateDetailWarehouse(purchaseCd, seqNo, toWhCd);
         logService.saveLog("입고 관리", "등록", ioCd, "발주번호: " + purchaseCd + ", 품목: " + itemCd);
     }
 
     @Transactional
     public void registerOutboundFromOrder(String orderCd, Integer seqNo, String itemCd, String fromWhCd, Integer qty, String remark) {
+        // [1] 요청 데이터 확인 로그
+        System.out.println(">>> [출고요청] 주문번호:" + orderCd + " / 순번:" + seqNo + " / 품목:" + itemCd + " / 창고:" + fromWhCd + " / 수량:" + qty);
+
+        // 1. 재고 부족 체크
         ItemStockId stockId = ItemStockId.builder().itemCd(itemCd).whCd(fromWhCd).build();
         ItemStock currentStock = itemStockRepository.findById(stockId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 창고에 품목 정보가 없습니다."));
 
         if (currentStock.getStockQty().compareTo(BigDecimal.valueOf(qty)) < 0) {
-            throw new IllegalArgumentException("재고가 부족합니다. (현재고: " + currentStock.getStockQty() + ")");
+            throw new IllegalArgumentException("재고가 부족합니다. (현재고: " + currentStock.getStockQty() + ", 요청: " + qty + ")");
         }
 
         String ioCd = generateId("IO");
         String ioDt = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-        ItemMst itemMst = itemRepository.findById(itemCd).orElseThrow();
-        WhMst fromWh = whMstRepository.findById(fromWhCd).orElseThrow();
+        ItemMst itemMst = itemRepository.findById(itemCd).orElseThrow(() -> new IllegalArgumentException("품목 오류"));
+        WhMst fromWh = whMstRepository.findById(fromWhCd).orElseThrow(() -> new IllegalArgumentException("창고 오류"));
 
+        // 2. 이력 저장
         ItemIo itemIo = new ItemIo();
-        itemIo.setIoCd(ioCd); itemIo.setIoDt(ioDt); itemIo.setIoType("OUT");
-        itemIo.setItemMst(itemMst); itemIo.setQty(qty); itemIo.setFromWh(fromWh); itemIo.setRemark(remark);
-        itemIo.setRefTb("TB_ORDER"); itemIo.setRefCd(orderCd); itemIo.setRefSeq(seqNo);
+        itemIo.setIoCd(ioCd);
+        itemIo.setIoDt(ioDt);
+        itemIo.setIoType("OUT");
+        itemIo.setItemMst(itemMst);
+        itemIo.setQty(qty);
+        itemIo.setFromWh(fromWh);
+        itemIo.setRemark(remark);
+        itemIo.setRefTb("TB_ORDER");
+        itemIo.setRefCd(orderCd);
+        itemIo.setRefSeq(seqNo);
         itemIoRepository.save(itemIo);
 
+        // 3. 재고 차감
         updateStock(itemCd, fromWhCd, BigDecimal.valueOf(qty), false);
         saveStockHistory(ioCd, itemCd, fromWhCd, "OUT", BigDecimal.valueOf(qty).negate(), "TB_ORDER", orderCd);
-        orderService.updateDetailStatus(orderCd, seqNo, "o3");
-        logService.saveLog("출고 관리", "등록", ioCd, "주문번호: " + orderCd + ", 품목: " + itemCd);
+
+        // =================================================================
+        // 🔥 [절대 서비스 호출 금지] 레포지토리로 직접 꺼내서 수정해야 합니다.
+        // =================================================================
+        OrderDetIdMst detId = new OrderDetIdMst();
+        detId.setOrderCd(orderCd);
+        detId.setSeqNo(seqNo);
+
+        OrderDetMst det = orderDetMstRepository.findById(detId)
+                .orElseThrow(() -> new IllegalArgumentException("주문 상세 정보를 찾을 수 없습니다."));
+
+        det.setStatus("o3");   // 상태: 출고완료
+        det.setWhCd(fromWhCd); // 창고: 출고 창고 저장
+
+        orderDetMstRepository.save(det); // UPDATE 쿼리 발생
+        // =================================================================
+
+        System.out.println(">>> [출고완료] 상태(o3) 및 창고(" + fromWhCd + ") 업데이트 완료");
     }
 
     public List<StockHistoryDto> getStockHistory(String type, String code) {

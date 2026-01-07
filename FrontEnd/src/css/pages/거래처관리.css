@@ -1,0 +1,125 @@
+/* 거래처관리 페이지 전용 스타일 */
+
+/* 탭 버튼 스타일 */
+.tab-buttons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tab-button {
+    padding: 4px 25px;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+    color: #64748b;
+    font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+
+.tab-button:hover:not(.active) {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    color: #475569;
+}
+
+.tab-button.active {
+    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+    border: 1px solid #2563eb;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    font-weight: 600;
+}
+
+.customer-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px;
+  border-bottom: none;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #f8f8f8 0%, #eeeeee 100%);
+  border-bottom: 1px solid #d8d8d8;
+  align-items: center;
+}
+
+.excel-tab {
+  padding: 5px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #d5d5d5;
+  background: #fafafa;
+  color: #666666;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+  min-width: 100px;
+  text-align: center;
+}
+
+.excel-tab:last-child {
+  border-right: none;
+}
+
+.excel-tab.active {
+  background: linear-gradient(180deg, #2d3e50 0%, #1a232f 100%);
+  color: #ffffff;
+  border: 1px solid #1a232f;
+  box-shadow: 0 2px 8px rgba(45, 62, 80, 0.2);
+  font-weight: 600;
+}
+
+.excel-tab:hover:not(.active) {
+  background: #f0f0f0;
+  color: #444444;
+  border-color: #c5c5c5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* 통계 정보 색상 지정 */
+.statistics-info.statistics-customer {
+  border-color: #3b82f6;
+}
+
+.statistics-info.statistics-customer .stat-label,
+.statistics-info.statistics-customer .stat-value,
+.statistics-info.statistics-customer .stat-unit {
+  color: #3b82f6;
+}
+
+.statistics-info.statistics-vendor {
+  border-color: #f97316;
+}
+
+.statistics-info.statistics-vendor .stat-label,
+.statistics-info.statistics-vendor .stat-value,
+.statistics-info.statistics-vendor .stat-unit {
+  color: #f97316;
+}
+
+/* 반응형 - 탭 관련 */
+@media (max-width: 768px) {
+  .customer-tabs {
+    flex-wrap: wrap;
+  }
+
+  .excel-tab {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 11px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .excel-tab {
+    padding: 6px 6px;
+    font-size: 9px;
+  }
+}

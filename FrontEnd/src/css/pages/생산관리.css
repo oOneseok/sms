@@ -1,0 +1,700 @@
+.excel-td {
+    border: 1px solid #d0d0d0;
+    padding: 4px 6px;
+    text-align: center;
+}
+/* ===============================
+   전체 레이아웃
+================================ */
+.order-management-container {
+  width: 100%;
+  height: calc(100vh - 42px);
+  background: #e5e5e5;
+  font-family: 'Malgun Gothic', '맑은 고딕', Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; 
+  padding: 10px;    
+  box-sizing: border-box;
+}
+
+/* ===============================
+   상단 헤더
+================================ */
+.production-header-bar {
+  height: 36px;
+  background: linear-gradient(to bottom, #f6f6f6, #e9e9e9);
+  border-bottom: 1px solid #a0a0a0;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.header-left-section {
+  flex-shrink: 0; 
+  height: 40px;   
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px; /* 이 여백도 필요에 따라 조절 가능 */
+}
+
+.page-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+}
+
+/* ===============================
+   메인 영역 (좌/우)
+================================ */
+.order-content-layout {
+    display: flex;
+    flex: 1;        /* ✅ 남은 공간 100% 차지 */
+    gap: 10px;
+    min-height: 0;  /* ✅ 필수: Flex 내부 스크롤 작동을 위해 0으로 설정 */
+    overflow: hidden;
+}
+
+/* ===============================
+   좌측 패널
+================================ */
+.order-list-panel {
+  width: 40%; /* 너비 조정 */
+  background: #ffffff;
+  border: 1px solid #d1d5db; /* 테두리 색상 통일 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.list-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.panel-header {
+  height: 34px;
+  background: linear-gradient(to bottom, #f8f8f8, #eaeaea);
+  border-bottom: 1px solid #a0a0a0;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-title {
+  white-space: nowrap;
+}
+
+.statistics-info {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.stat-label {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #3b82f6;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: right;
+}
+
+.stat-unit {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.right-actions {
+  margin-left: auto;
+  padding: 8px 10px;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+/* ===============================
+   우측 패널
+================================ */
+.order-detail-panel {
+    width: 60%;
+    background: #f5f6f8;
+    display: flex;
+    flex-direction: column;
+    height: 100%;   /* ✅ 부모 높이 꽉 채움 */
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    overflow: hidden; 
+    position: relative;
+}
+.detail-header, 
+.detail-meta-bar {
+  flex-shrink: 0; /* 스크롤 되어도 줄어들지 않음 */
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+/* 우측 상단 고정 헤더 */
+.production-detail-header {
+  height: 35px;
+  background: linear-gradient(180deg, #ffffff 0%, #e8eef6 50%, #d8e5f0 100%);
+  border-bottom: 2px solid #b8c5d9;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  color: #0f172a;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.9), inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.detail-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0;
+  color: #0f172a;
+}
+
+/* 상태/버튼 바 */
+.detail-meta-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #c0c0c0;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-section {
+  background: #ffffff;
+  border: 1px solid #cfd4dc;
+  padding: 8px 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow: hidden;
+  margin: 0px 5px;
+}
+
+.state-progress {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin: 0px 5px;
+}
+
+.detail-content {
+    flex: 1;            /* 남은 공간 차지 */
+    overflow-y: auto;   /* ✅ 세로 스크롤 켜기 */
+    overflow-x: hidden;
+    padding: 15px;
+    min-height: 0;
+}
+
+.detail-footer {
+  flex-shrink: 0;       /* 크기 줄어듦 방지 */
+  padding: 12px 15px;
+  border-top: 1px solid #d1d5db;
+  background: #ffffff;  
+  display: flex;
+  justify-content: flex-end;
+  z-index: 10;
+}
+
+/* ===============================
+   Excel 스타일 테이블
+================================ */
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.excel-th {
+  border: 1px solid #d0d0d0;
+  background: #f3f3f3;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.excel-th-num {
+  width: 46px;
+  text-align: center;
+}
+
+.excel-tr {
+  cursor: pointer;
+}
+
+.excel-tr:hover {
+  background: #eef5ff;
+}
+
+.excel-tr.selected {
+  background: #cfe3ff;
+}
+
+.excel-td-number {
+  background: #f5f5f5;
+  text-align: center;
+  width: 46px;
+}
+.label-good {
+  color: #166534;          /* 진한 초록 */
+  font-weight: 700;
+}
+
+.value-good {
+  color: #16a34a;          /* 초록 */
+  font-weight: 800;
+  font-size: 16px;
+}
+
+/* 불량 */
+.label-bad {
+  color: #991b1b;          /* 진한 빨강 */
+  font-weight: 700;
+}
+
+.value-bad {
+  color: #dc2626;          /* 빨강 */
+  font-weight: 800;
+  font-size: 17px;
+}
+
+/* ===============================
+   카드/섹션
+================================ */
+.form-section {
+  background: #ffffff;
+  border: 1px solid #cfd4dc;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 1px solid #3b82f6;
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+.mt-16 {
+  margin-top: 16px;
+}
+
+.hint-text {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* ===============================
+   입력 폼
+================================ */
+.form-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 15px;
+}
+
+.form-row label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.form-row input,
+.form-row select {
+  height: 26px;
+  font-size: 11px;
+  padding: 4px 6px;
+  border: 1px solid #c0c0c0;
+  border-radius: 3px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.mini-input {
+  width: 70px !important;
+  margin-right: 6px;
+}
+
+/* ===============================
+   버튼
+================================ */
+.excel-btn {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
+  border: 1px solid #808080;
+  background: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.excel-btn:hover {
+  background: #f0f0f0;
+}
+
+.excel-btn-new {
+  background: #70ad47;
+  color: #fff;
+  border-color: #5a8f38;
+}
+
+.excel-btn-delete,
+.excel-btn-modify {
+  background: #ffffff;
+  color: #000;
+}
+
+.excel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.warehouse-action-bar {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+}
+
+/* 왼쪽 수량 표시 */
+.qty-summary {
+  font-size: 11px;
+  color: #374151;
+  margin-left: auto;
+}
+
+/* ✅ 선택 버튼을 오른쪽 끝으로 */
+.warehouse-action-bar .excel-btn {
+  margin-left: auto;
+}
+
+
+
+/* ===============================
+   빈 화면
+================================ */
+.empty-view {
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+  padding: 40px 0;
+}
+
+/* ===============================
+   상태 스텝
+================================ */
+.state-step {
+  padding: 4px 8px;
+  font-size: 10px;
+  border-radius: 3px;
+  background: #e5e7eb;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.state-step.active {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+}
+
+.state-step.done {
+  background: #93c5fd;
+  color: #000;
+}
+
+.state-step.cancel-active {
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.status-cancel {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* ===============================
+   MRP 상태 색
+================================ */
+.mrp-shortage {
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.mrp-shortage .excel-td {
+  background: #fef2f2;
+}
+
+.mrp-complete {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.mrp-complete .excel-td {
+  background: #eff6ff;
+}
+
+/* ===============================
+   검색 필터 슬라이드
+================================ */
+.filter-toggle-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #374151;
+  height: 24px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-toggle-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.filter-toggle-btn span {
+  white-space: nowrap;
+}
+
+.order-list-panel .filter-slide {
+    display: none;
+    position: absolute;
+    top: 34px;
+    left: 0;
+    right: 0;
+    z-index: 60;
+}
+
+.filter-slide.open {
+  display: block;
+}
+
+.advanced-filter-panel {
+  background: #f8f9fa;
+  border-bottom: 1px solid #ccc;
+  padding: 10px 12px;
+
+  position: absolute;
+  /* top: 35px; */
+  left: 0;
+  right: 0;
+  z-index: 100;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.advanced-filter-panel .search-bar-inline .search-input {
+    width: 120px !important;
+    min-width: auto !important;
+}
+.advanced-filter-panel .search-bar-inline .search-select {
+    width: 90px !important;
+    min-width: auto !important;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 10px;
+  column-gap: 12px;
+  align-items: flex-end;
+}
+/* 윗줄 */
+.filter-top {
+  order: 1;
+}
+
+/* 아랫줄 */
+.filter-bottom {
+  order: 3;
+}
+.filter-row::after {
+  content: '';
+  flex-basis: 100%;
+  order: 2;
+}
+.filter-actions.filter-bottom {
+  margin-left: auto;
+}
+
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.filter-field input,
+.filter-field select {
+  height: 26px;
+  font-size: 11px;
+  padding: 4px 6px;
+  border: 1px solid #c0c0c0;
+  border-radius: 3px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #333;
+}
+
+.filter-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #111;
+  padding: 4px 0;
+}
+
+.date-range-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-separator {
+  font-size: 12px;
+  color: #555;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.production-filter-search-btn,
+.production-filter-reset-btn {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
+  border: 1px solid #808080;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.production-filter-search-btn:hover,
+.production-filter-reset-btn:hover {
+  background: #f0f0f0;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #333;
+}
+/* ===============================
+   비고 전용 스타일
+================================ */
+.remark-row label {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;/* 회색 라벨 */
+  padding: 10px;
+  height: 10px;
+}
+
+.remark-input {
+  background: #f3f4f6;      /* 연한 회색 배경 */
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 10px;
+  height: 10px;
+}
+
+.remark-input::placeholder {
+  color: #9ca3af;
+  font-style: normal;
+}
+
+/* 포커스 시 너무 튀지 않게 */
+.remark-input:focus {
+  outline: none;
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+/* ===============================
+   Toast Message
+================================ */
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 240px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #fff;
+  z-index: 9999;
+  animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+}
+
+.toast-success {
+  background: #16a34a;
+}
+
+.toast-error {
+  background: #dc2626;
+}
+
+.toast-info {
+  background: #2563eb;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+.pp-input {
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.pp-input:focus {
+    outline: 2px solid #3b82f6;
+    border-color: transparent;
+}

@@ -1,0 +1,1102 @@
+@import "../components/erp-button.css";
+
+.business-management-container {
+  width: 100%;
+  height: 100%;
+  background: #e5e5e5;
+  padding: 0;
+  box-sizing: border-box;
+  position: relative;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.business-management-wrapper {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.business-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #a0a0a0;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.header-left-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.business-search-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 검색 입력창과 조회 버튼 사이 간격 제거 */
+.business-search-inline .search-input + .search-btn {
+  margin-left: -8px; /* gap 8px 제거 */
+  border-left: 1px solid #a0a0a0;
+}
+
+.page-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* 상단(헤더) 등록/삭제 버튼: 테두리 제거 */
+.business-management-header .header-buttons .excel-btn {
+  border: none;
+}
+
+.business-management-header .header-buttons .excel-btn:focus,
+.business-management-header .header-buttons .excel-btn:focus-visible {
+  outline: none;
+}
+
+.statistics-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  border-radius: 20px;
+  font-size: 11px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  margin-left: 10px;
+  white-space: nowrap;
+  box-shadow: none;
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.stat-label {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #3b82f6;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: right;
+}
+
+.stat-unit {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.excel-btn {
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.excel-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.excel-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-icon-wrapper {
+  position: relative;
+  width: 18px;
+  height: 14px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.folder-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 14px;
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 25%, #ffd700 50%, #e6c200 75%, #ffd700 100%);
+  border: 1px solid #d4af37;
+  border-radius: 2px 2px 3px 3px;
+  box-shadow: 
+    inset 0 2px 3px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.folder-icon::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 2px;
+  width: 6px;
+  height: 3px;
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  border: 1px solid #d4af37;
+  border-bottom: none;
+  border-radius: 1px 1px 0 0;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.overlay-icon {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  font-weight: bold;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  border: 1.5px solid;
+}
+
+.overlay-add {
+  background: #0078d4;
+  color: #ffffff;
+  border-color: #005a9e;
+  line-height: 1;
+}
+
+.overlay-edit {
+  background: #70ad47;
+  color: #ffffff;
+  border-color: #5a8f38;
+  padding: 0;
+}
+
+.overlay-edit svg {
+  width: 5px;
+  height: 5px;
+}
+
+.overlay-delete {
+  background: #d32f2f;
+  color: #ffffff;
+  border-color: #b71c1c;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 900;
+  padding-top: 1px;
+}
+.btn-label {
+  color: #666666;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.excel-btn-new {
+  background: transparent !important;
+}
+
+.excel-btn-new:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.excel-btn-modify {
+  background: transparent !important;
+}
+
+.excel-btn-modify:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.excel-btn-delete {
+  background: transparent !important;
+}
+
+.excel-btn-delete:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.business-search {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #a0a0a0;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.search-select {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  color: #374151;
+  background: #ffffff;
+  height: 32px;
+  box-sizing: border-box;
+  min-width: 100px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+}
+
+.search-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  color: #374151;
+  background: #ffffff;
+  height: 32px;
+  box-sizing: border-box;
+  min-width: 200px;
+  width: 440px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+}
+
+.search-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  color: #ffffff;
+  background: #3b82f6;
+  height: 32px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.search-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.search-btn:active {
+  background: #1d4ed8;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+/* 메인 콘텐츠 레이아웃 */
+.business-content-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 왼쪽: 목록 패널 */
+.business-list-panel {
+  width: 55%;
+  border-right: 1px solid #a0a0a0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.list-table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #a0a0a0;
+  border-top: none;
+  border-right: none;
+  min-height: 0;
+}
+
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+}
+
+.excel-th {
+  background: #d9e1f2;
+  border: 1px solid #a0a0a0;
+  padding: 6px 8px;
+  font-weight: 600;
+  color: #000000;
+  text-align: center;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.excel-tr {
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.excel-tr:hover {
+  background: #f0f7ff;
+}
+
+.excel-tr.selected {
+  background: #d0e8ff;
+}
+
+.excel-td {
+  border: 1px solid #d0d0d0;
+  padding: 6px 8px;
+  vertical-align: middle;
+  background: #ffffff;
+  font-size: 11px;
+  color: #000000;
+}
+
+.excel-tr.selected .excel-td {
+  background: #d0e8ff;
+}
+
+.excel-td-number {
+  background: #f5f5f5;
+  text-align: center;
+  font-weight: 400;
+  width: 50px;
+  min-width: 50px;
+}
+
+.excel-tr.selected .excel-td-number {
+  background: #d0e8ff;
+}
+
+/* 오른쪽: 상세 정보 패널 */
+.business-detail-panel {
+  width: 45%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+  position: relative;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eff3f8 100%);
+  border-bottom: 1px solid #d6dbe3;
+  flex-shrink: 0;
+}
+
+.detail-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.detail-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border: 1px solid #bae6fd;
+}
+
+.detail-subtext {
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.detail-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #1f2937;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.status-text {
+  font-weight: 600;
+}
+
+.detail-content {
+  flex: 1;
+  overflow-y: hidden;
+  padding: 10px 12px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  background: #eef1f4;
+  border-left: 1px solid #cfd4de;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.detail-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.badge-new {
+  background: #ecfeff;
+  color: #0ea5e9;
+  border: 1px solid #bae6fd;
+}
+
+.badge-edit {
+  background: #eef2ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+}
+
+.badge-success {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.meta-text {
+  font-size: 11px;
+  color: #475569;
+}
+
+.detail-main-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.detail-main-grid > .form-section,
+.detail-main-grid > .image-section {
+  height: 100%;
+}
+
+/* 폼 섹션 */
+.form-section {
+  background: #fbfbfd;
+  border: 1px solid #cfd4de;
+  padding: 10px 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #2f4f8f;
+  display: inline-block;
+  min-width: 80px;
+}
+
+.section-title-small {
+  font-size: 10px;
+  font-weight: 600;
+  color: #2f3f55;
+  margin-bottom: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #9aa6b9;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.form-row-full {
+  grid-template-columns: 1fr;
+}
+
+.form-field-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.form-field-inline label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0;
+}
+
+.form-field-inline input,
+.form-field-inline textarea {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  color: #1f2937;
+  background: #ffffff;
+  box-sizing: border-box;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  height: 28px;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.form-field-inline input.input-error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cline x1='2' y1='2' x2='10' y2='10' stroke='%23ef4444' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='10' y1='2' x2='2' y2='10' stroke='%23ef4444' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
+  background-position: right 10px center;
+  padding-right: 26px;
+  transition: none;
+}
+
+.form-field-inline .error-text {
+  color: #b91c1c;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.form-field-inline input:hover {
+  border-color: #9ca3af;
+}
+
+.form-field-inline textarea {
+  resize: vertical;
+  min-height: 50px;
+  height: auto;
+  padding: 4px 8px;
+}
+
+.form-field-inline input:focus,
+.form-field-inline textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.form-field-inline input:disabled,
+.form-field-inline textarea:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.form-field-inline input[readonly] {
+  background: #f9fafb;
+  cursor: default;
+  color: #4b5563;
+}
+
+/* 주소 검색 스타일 */
+.form-field-address {
+  gap: 4px;
+}
+
+.form-field-address input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.address-input-group {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.address-input-group input {
+  flex: 1;
+  width: auto;
+  max-width: none;
+}
+
+.address-search-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 10px;
+  min-height: 28px;
+}
+
+.address-search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #e5e7eb;
+  color: #9ca3af;
+}
+
+.address-detail-input {
+  margin-top: 4px;
+}
+/* 이미지 섹션 */
+.image-section {
+  background: #fbfbfd;
+  border: 1px solid #cfd4de;
+  padding: 10px 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 250px;
+}
+
+.image-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+
+.image-placeholder {
+  width: 100%;
+  max-width: 100%;
+  height: 200px;
+  background: #f0f2f5;
+  border: 1px solid #c7ceda;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.2s;
+  margin: 0;
+}
+
+.image-placeholder:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.image-placeholder span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+}
+
+.image-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.image-buttons .erp-button {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 10px;
+  min-height: 28px;
+}
+
+.image-buttons .erp-button:disabled,
+.image-buttons .erp-button.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #e5e7eb;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.detail-footer{
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 10px 12px;
+  background: #ffffff;
+  border-top: 2px solid #e5e7eb;
+  width: 100%;
+  box-sizing: border-box;
+  z-index: 100;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 컬럼 너비 조정 */
+.excel-th:nth-child(1),
+.excel-td:nth-child(1) {
+  width: 50px;
+  min-width: 50px;
+}
+
+.excel-th:nth-child(2),
+.excel-td:nth-child(2) {
+  width: 150px;
+  min-width: 150px;
+}
+
+.excel-th:nth-child(3),
+.excel-td:nth-child(3) {
+  width: 120px;
+  min-width: 120px;
+}
+
+.excel-th:nth-child(4),
+.excel-td:nth-child(4) {
+  width: 140px;
+  min-width: 140px;
+}
+
+.excel-th:nth-child(5),
+.excel-td:nth-child(5) {
+  width: 140px;
+  min-width: 140px;
+}
+
+/* 반응형 디자인 - 태블릿 */
+@media (max-width: 1024px) {
+  .business-content-layout {
+    flex-direction: column;
+  }
+
+  .detail-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .business-list-panel {
+    width: 100%;
+    height: 40%;
+    border-right: none;
+    border-bottom: 1px solid #a0a0a0;
+  }
+
+  .business-detail-panel {
+    width: 100%;
+    height: 60%;
+  }
+}
+
+/* 반응형 디자인 - 모바일 */
+@media (max-width: 768px) {
+  .business-management-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    padding: 8px;
+  }
+
+  .page-title {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .header-buttons {
+    width: 100%;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .statistics-info {
+    font-size: 10px;
+    padding: 3px 6px;
+    gap: 3px;
+  }
+
+  .stat-label,
+  .stat-value,
+  .stat-unit {
+    font-size: 10px;
+  }
+
+  .excel-btn {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 10px;
+    min-height: 28px;
+  }
+
+  .business-search {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .search-select {
+    min-width: 90px;
+    height: 32px;
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .search-input {
+    flex: 1;
+    height: 32px;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .business-content-layout {
+    flex-direction: column;
+  }
+
+  .business-list-panel {
+    width: 100%;
+    height: 50%;
+    border-right: none;
+    border-bottom: 1px solid #a0a0a0;
+  }
+
+  .business-detail-panel {
+    width: 100%;
+    height: 50%;
+  }
+
+  .detail-header {
+    padding: 8px;
+  }
+
+  .detail-title {
+    font-size: 11px;
+  }
+
+  .detail-content {
+    padding: 8px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .excel-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .excel-th {
+    padding: 6px 4px;
+    font-size: 9px;
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
+  .excel-td {
+    padding: 4px 4px;
+    font-size: 9px;
+  }
+
+  .excel-td-number {
+    padding: 4px 4px;
+    font-size: 9px;
+  }
+
+  /* 컬럼 너비 모바일 최적화 */
+  .excel-th:nth-child(1),
+  .excel-td:nth-child(1) {
+    width: 12%;
+    min-width: 0;
+  }
+
+  .excel-th:nth-child(2),
+  .excel-td:nth-child(2) {
+    width: 25%;
+    min-width: 0;
+  }
+
+  .excel-th:nth-child(3),
+  .excel-td:nth-child(3) {
+    width: 20%;
+    min-width: 0;
+  }
+
+  .excel-th:nth-child(4),
+  .excel-td:nth-child(4) {
+    width: 22%;
+    min-width: 0;
+  }
+
+  .excel-th:nth-child(5),
+  .excel-td:nth-child(5) {
+    width: 21%;
+    min-width: 0;
+  }
+}
+
+/* 작은 모바일 (480px 이하) */
+@media (max-width: 480px) {
+  .business-management-header {
+    padding: 6px;
+  }
+
+  .page-title {
+    font-size: 11px;
+  }
+
+  .excel-btn {
+    padding: 5px 4px;
+    font-size: 8px;
+    min-height: 24px;
+  }
+
+  .statistics-info {
+    font-size: 9px;
+    padding: 2px 4px;
+    gap: 2px;
+  }
+
+  .stat-label,
+  .stat-value,
+  .stat-unit {
+    font-size: 9px;
+  }
+
+  .business-search {
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .search-select {
+    min-width: 80px;
+    height: 28px;
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+
+  .search-input {
+    height: 28px;
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+
+  .detail-header {
+    padding: 6px;
+  }
+
+  .detail-title {
+    font-size: 10px;
+  }
+
+  .detail-content {
+    padding: 6px;
+  }
+
+  .form-field-inline label {
+    font-size: 10px;
+  }
+
+  .form-field-inline input {
+    padding: 5px 8px;
+    font-size: 10px;
+    height: 28px;
+  }
+
+  .excel-th {
+    padding: 5px 3px;
+    font-size: 8px;
+  }
+
+  .excel-td {
+    padding: 3px 3px;
+    font-size: 8px;
+  }
+
+  .excel-td-number {
+    padding: 3px 3px;
+    font-size: 8px;
+  }
+}

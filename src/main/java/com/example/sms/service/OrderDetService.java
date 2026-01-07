@@ -20,7 +20,7 @@ public class OrderDetService {
 
     private final OrderDetMstRepository repo;
     private final OrderMstRepository orderRepo;
-    private final ItemRepository itemRepo; // ✅ TB_ITEMMST 존재 체크
+    private final ItemRepository itemRepo;
 
     /** ✅ 전체/검색 통합 */
     @Transactional(readOnly = true)

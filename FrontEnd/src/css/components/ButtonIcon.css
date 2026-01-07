@@ -1,0 +1,124 @@
+/* 버튼 아이콘 공통 스타일 */
+.btn-icon-wrapper {
+  position: relative;
+  width: 14px; /* reduced */
+  height: 12px; /* reduced */
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.folder-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 14px; /* reduced */
+  height: 12px; /* reduced */
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 25%, #ffd700 50%, #e6c200 75%, #ffd700 100%);
+  border: 1px solid #d4af37;
+  border-radius: 2px 2px 3px 3px;
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.15),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.folder-icon::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 2px;
+  width: 5px; /* reduced */
+  height: 3px;
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  border: 1px solid #d4af37;
+  border-bottom: none;
+  border-radius: 1px 1px 0 0;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.overlay-icon {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 9px; /* slightly reduced */
+  height: 9px; /* slightly reduced */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6px; /* reduced */
+  font-weight: bold;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  border: 1.2px solid;
+}
+
+.overlay-add {
+  background: #0078d4;
+  color: #ffffff;
+  border-color: #005a9e;
+  line-height: 1;
+}
+
+.overlay-edit {
+  background: #70ad47;
+  color: #ffffff;
+  border-color: #5a8f38;
+  padding: 0;
+}
+
+.overlay-edit svg {
+  width: 5px;
+  height: 5px;
+}
+
+.overlay-delete {
+  background: #d32f2f;
+  color: #ffffff;
+  border-color: #b71c1c;
+  font-size: 8px; /* reduced */
+  line-height: 1;
+  font-weight: 900;
+  padding-top: 1px;
+}
+
+.btn-label {
+  color: #666666;
+  font-size: 10px; /* reduced */
+  line-height: 1;
+}
+
+/* 버튼 스타일 개선 */
+.excel-btn {
+  padding: 3px 6px; /* reduced */
+  font-size: 10px; /* reduced */
+  font-weight: 400;
+  cursor: pointer;
+  border: none;
+  border-radius: 0;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 4px; /* reduced */
+  background: transparent;
+  color: #666666;
+  min-height: 20px; /* reduced */
+  transition: background 0.2s;
+}
+
+.excel-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.excel-btn-new,
+.excel-btn-modify,
+.excel-btn-delete {
+  background: transparent !important;
+}
+
+.excel-btn-new:hover,
+.excel-btn-modify:hover,
+.excel-btn-delete:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+

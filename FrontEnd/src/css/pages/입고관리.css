@@ -1,0 +1,375 @@
+/* 입고관리 페이지 스타일 - 2분할 레이아웃 (품목관리와 동일) */
+
+/* 좌우 분할 레이아웃 */
+.customer-content-layout {
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 250px);
+    margin-top: 0;
+    border-top: none;
+}
+
+/* 왼쪽 목록 패널 */
+.customer-list-panel {
+    flex: 6;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #a0a0a0;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+/* 오른쪽 상세 패널 */
+.customer-detail-panel {
+    flex: 4;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+/* 리스트 테이블 래퍼 */
+.list-table-wrapper {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: #ffffff;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.list-table-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+.list-table-wrapper .excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.list-table-wrapper .excel-table thead {
+    background: #f0f0f0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.list-table-wrapper .excel-table th {
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #a0a0a0;
+    background: #f0f0f0;
+    color: #000000;
+}
+
+.list-table-wrapper .excel-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.list-table-wrapper .excel-table th.sortable:hover {
+    background: #e0e0e0;
+}
+
+.sort-icon {
+    font-size: 10px;
+    margin-left: 4px;
+    color: #1e88e5;
+    font-weight: bold;
+}
+
+.list-table-wrapper .excel-table td {
+    padding: 6px 8px;
+    font-size: 11px;
+    text-align: center;
+    border: 1px solid #d0d0d0;
+    background: #ffffff;
+    color: #000000;
+}
+
+.list-table-wrapper .excel-tr {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.list-table-wrapper .excel-tr:hover {
+    background: #f0f8ff;
+}
+
+.list-table-wrapper .excel-tr.selected {
+    background: #cce5ff;
+    font-weight: 600;
+}
+
+.list-table-wrapper .excel-td-number {
+    text-align: center;
+}
+
+/* 상세 정보 섹션 */
+.detail-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #d0d0d0;
+    background: #f8f8f8;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.detail-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.detail-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #000000;
+}
+
+.detail-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.detail-subtext {
+    font-size: 11px;
+    color: #666666;
+}
+
+.detail-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4caf50;
+}
+
+.status-text {
+    font-size: 11px;
+    color: #666666;
+    font-weight: 500;
+}
+
+.detail-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    background: #fafafa;
+}
+
+.detail-meta-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 8px 12px;
+    background: #ffffff;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-view {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-edit {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.badge-new {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.meta-text {
+    font-size: 11px;
+    color: #666666;
+}
+
+.form-section {
+    background: #ffffff;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.section-title {
+    padding: 10px 12px;
+    background: #f0f0f0;
+    border-bottom: 1px solid #d0d0d0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #000000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.item-count-inline {
+    display: inline-block;
+    min-width: 25px;
+    padding: 2px 6px;
+    background: #e8f0ff;
+    color: #1e88e5;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.form-group {
+    padding: 12px;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-field-inline {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.form-field-inline label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #333333;
+}
+
+.form-field-inline input,
+.form-field-inline select {
+    padding: 6px 8px;
+    font-size: 11px;
+    border: 1px solid #b0b0b0;
+    border-radius: 2px;
+    background: #ffffff;
+    color: #000000;
+    font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+}
+
+.form-field-inline input:disabled {
+    background: #f5f5f5;
+    color: #666666;
+    cursor: not-allowed;
+}
+
+.form-field-inline input:focus,
+.form-field-inline select:focus {
+    outline: none;
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+}
+
+/* 발주 상세 목록 테이블 */
+.detail-table-wrapper {
+    max-height: 300px;
+    overflow-y: auto;
+    border-top: 1px solid #d0d0d0;
+}
+
+.detail-table-wrapper .excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.detail-table-wrapper .excel-table thead {
+    background: #f9f9f9;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.detail-table-wrapper .excel-table th {
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #d0d0d0;
+    background: #f9f9f9;
+    color: #000000;
+}
+
+.detail-table-wrapper .excel-table td {
+    padding: 6px 8px;
+    font-size: 11px;
+    text-align: center;
+    border: 1px solid #e8e8e8;
+    background: #ffffff;
+}
+
+.detail-table-wrapper .excel-tr {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.detail-table-wrapper .excel-tr:hover {
+    background: #f0f8ff;
+}
+
+.detail-table-wrapper .excel-tr.selected {
+    background: #cce5ff;
+    font-weight: 600;
+}
+
+.detail-table-wrapper .excel-td-number {
+    text-align: center;
+}
+
+/* 빈 상태 박스 */
+.empty-state-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    font-size: 12px;
+    color: #999999;
+    text-align: center;
+    background: #fafafa;
+}

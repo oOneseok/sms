@@ -29,7 +29,47 @@ public class ItemController {
 
     private static final String MENU_NAME = "품목 관리";
 
-    // 1. 아이템 목록 조회
+    // ✅ 발주관리 자재팝업용: 자재(ITEM_FLAG=01)만 조회
+    // GET /api/item/materials
+    @GetMapping("/materials")
+    public List<ItemResponseDto> getMaterials() {
+
+        // 분류 경로 표시도 같이 하려면 typeMap 필요
+        List<ItemTypeMst> allTypes = itemTypeRepository.findAll();
+        Map<String, ItemTypeMst> typeMap = allTypes.stream()
+                .collect(Collectors.toMap(ItemTypeMst::getTypeCd, Function.identity()));
+
+        List<ItemMst> items = itemRepository.findByItemFlag("01");
+
+        return items.stream()
+                .map(item -> {
+                    String path = buildTypePath(item.getTypeCd(), typeMap);
+                    return ItemResponseDto.fromEntity(item, path);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ✅ 주문관리 제품팝업용: 제품(ITEM_FLAG=02)만 조회
+    // GET /api/item/products
+    @GetMapping("/products")
+    public List<ItemResponseDto> getProducts() {
+
+        // 분류 경로 표시도 같이 하려면 typeMap 필요
+        List<ItemTypeMst> allTypes = itemTypeRepository.findAll();
+        Map<String, ItemTypeMst> typeMap = allTypes.stream()
+                .collect(Collectors.toMap(ItemTypeMst::getTypeCd, Function.identity()));
+
+        List<ItemMst> items = itemRepository.findByItemFlag("02");
+
+        return items.stream()
+                .map(item -> {
+                    String path = buildTypePath(item.getTypeCd(), typeMap);
+                    return ItemResponseDto.fromEntity(item, path);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // 1. 아이템 목록 조회 (기존 그대로)
     @GetMapping
     public List<ItemResponseDto> getItemList(
             @RequestParam(required = false, defaultValue = "") String searchText,
@@ -71,7 +111,7 @@ public class ItemController {
                 .collect(Collectors.toList());
     }
 
-    // 2. 저장
+    // 2. 저장 (기존 그대로)
     @PostMapping
     public ResponseEntity<ItemMst> saveItem(@RequestBody ItemMst item) {
         if (item.getItemCd() == null || item.getItemCd().isBlank()) {
@@ -86,7 +126,7 @@ public class ItemController {
         return ResponseEntity.ok(saved);
     }
 
-    // 3. 삭제
+    // 3. 삭제 (기존 그대로)
     @DeleteMapping("/{itemCd}")
     @Transactional
     public ResponseEntity<Void> deleteItem(@PathVariable String itemCd) {

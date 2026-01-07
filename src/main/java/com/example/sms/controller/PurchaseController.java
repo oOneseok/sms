@@ -1,5 +1,6 @@
 package com.example.sms.controller;
 
+import com.example.sms.dto.PurchaseDetDto;
 import com.example.sms.entity.PurchaseDetMst;
 import com.example.sms.entity.PurchaseMst;
 import com.example.sms.service.PurchaseService;
@@ -34,8 +35,8 @@ public class PurchaseController {
 
     // 3. 발주 상세 조회 (디테일 목록)
     @GetMapping("/{purchaseCd}/details")
-    public ResponseEntity<List<PurchaseDetMst>> getDetails(@PathVariable String purchaseCd) {
-        return ResponseEntity.ok(purchaseService.getPurchaseDetails(purchaseCd));
+    public List<PurchaseDetDto> getPurchaseDetails(@PathVariable String purchaseCd) {
+        return purchaseService.getPurchaseDetailsDto(purchaseCd);
     }
 
     // 4. 저장 (신규/수정 공통)
@@ -53,6 +54,13 @@ public class PurchaseController {
 
         // 저장된 발주번호 리턴 (프론트에서 재조회용)
         return ResponseEntity.ok(Map.of("purchaseCd", savedCd));
+    }
+
+    // 5. 삭제
+    @DeleteMapping("/{purchaseCd}")
+    public ResponseEntity<Void> delete(@PathVariable String purchaseCd) {
+        purchaseService.deletePurchase(purchaseCd);
+        return ResponseEntity.ok().build();
     }
 
     // ✅ 프론트엔드 JSON 데이터를 받을 DTO (내부 클래스)

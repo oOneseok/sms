@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@Table(name = "TB_PROD") // DB가 B_PROD면 "B_PROD"로 변경
+@Table(name = "TB_PROD")
 public class Prod {
 
     @Id

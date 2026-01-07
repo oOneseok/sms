@@ -30,10 +30,12 @@ public class ProdService {
     private final ItemIoRepository itemIoRepository;
     private final WhMstRepository whMstRepository;
 
+    // ✅ [추가] 로그 서비스를 주입받습니다.
+    private final LogService logService;
+
     // 날짜 포맷 (년월일시분초밀리초)
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
-    // ✅ [수정됨] Prod ID Prefix "P" -> "PR" (예: PR20231231123000123)
     private String newProdNo() {
         return "PR" + LocalDateTime.now().format(TS);
     }
@@ -69,19 +71,24 @@ public class ProdService {
     public Prod createProd(Prod body) {
         String prodNo = newProdNo();
 
-        // 혹시 모를 중복 체크 (거의 발생 안 함)
         if (prodRepository.existsById(prodNo)) {
             throw new IllegalArgumentException("Already exists: " + prodNo);
         }
 
-        return prodRepository.save(Prod.builder()
-                .prodNo(prodNo) // 👈 여기서 생성된 번호 사용
+        Prod saved = prodRepository.save(Prod.builder()
+                .prodNo(prodNo)
                 .prodDt(body.getProdDt())
                 .itemCd(body.getItemCd())
                 .planQty(nz(body.getPlanQty()))
                 .status("01")
                 .remark(body.getRemark())
                 .build());
+
+        // ✅ [로그] 생산계획 등록
+        logService.saveLog("생산 관리", "등록", prodNo, "계획등록",
+                "품목: " + body.getItemCd() + ", 수량: " + body.getPlanQty());
+
+        return saved;
     }
 
     @Transactional
@@ -89,7 +96,7 @@ public class ProdService {
         Prod old = loadProd(prodNo);
         String itemCd = (body.getItemCd() == null || body.getItemCd().isBlank()) ? old.getItemCd() : body.getItemCd();
 
-        return prodRepository.save(Prod.builder()
+        Prod saved = prodRepository.save(Prod.builder()
                 .prodNo(prodNo)
                 .prodDt(body.getProdDt() == null ? old.getProdDt() : body.getProdDt())
                 .itemCd(itemCd)
@@ -97,6 +104,11 @@ public class ProdService {
                 .status(body.getStatus() == null ? old.getStatus() : body.getStatus())
                 .remark(body.getRemark() == null ? old.getRemark() : body.getRemark())
                 .build());
+
+        // ✅ [로그] 생산계획 수정
+        logService.saveLog("생산 관리", "수정", prodNo, "계획수정", "정보 업데이트 완료");
+
+        return saved;
     }
 
     @Transactional
@@ -108,14 +120,20 @@ public class ProdService {
         if ("03".equals(old.getStatus())) {
             unreserveMaterials(prodNo, "취소로 인한 해제");
         }
-        return prodRepository.save(Prod.builder()
+        Prod saved = prodRepository.save(Prod.builder()
                 .prodNo(old.getProdNo()).prodDt(old.getProdDt()).itemCd(old.getItemCd())
                 .planQty(old.getPlanQty()).status("09").remark(remark).build());
+
+        // ✅ [로그] 생산계획 취소
+        logService.saveLog("생산 관리", "취소", prodNo, "계획취소", "취소사유: " + remark);
+
+        return saved;
     }
 
     // =========================================================
     // LOGIC
     // =========================================================
+    // ... (calcRequiredMaterials, autoAllocate, manualAllocate 메서드는 로그 없음, 기존 유지) ...
     private Map<String, BigDecimal> calcRequiredMaterials(String pItemCd, BigDecimal planQty) {
         List<BomMst> boms = bomRepository.findByPItemCd(pItemCd);
         Map<String, BigDecimal> req = new LinkedHashMap<>();
@@ -166,9 +184,10 @@ public class ProdService {
     @Transactional
     public ReserveResult reserveMaterials(String prodNo, ProdReserveReq req) {
         Prod prod = loadProd(prodNo);
-        if (!"02".equals(prod.getStatus())) throw new IllegalArgumentException("STATUS=02에서만 예약 가능");
+        if (!"03".equals(prod.getStatus())) {
+            throw new IllegalArgumentException("자재예약(03) 단계에서만 예약 확정이 가능합니다. (현재: " + prod.getStatus() + ")");
+        }
 
-        // 중복 예약 방지
         List<ItemIo> existing = itemIoRepository.findByRefTbAndRefCdAndIoType("TB_PROD", prodNo, "RESERVE");
         if (!existing.isEmpty()) {
             throw new IllegalArgumentException("이미 예약된 생산계획입니다.");
@@ -222,6 +241,10 @@ public class ProdService {
         }
         if (totalReserveCount == 0) throw new IllegalArgumentException("예약된 자재 없음");
         prodRepository.save(Prod.builder().prodNo(prod.getProdNo()).prodDt(prod.getProdDt()).itemCd(prod.getItemCd()).planQty(prod.getPlanQty()).status("03").remark(prod.getRemark()).build());
+
+        // ✅ [로그] 자재 예약
+        logService.saveLog("자재 관리", "예약", prodNo, "자재예약", "예약된 자재 건수: " + totalReserveCount);
+
         return new ReserveResult(prodNo, reservedLog);
     }
 
@@ -248,6 +271,11 @@ public class ProdService {
             un.setRefTb("TB_PROD"); un.setRefCd(prodNo); un.setRefSeq(2); un.setRemark(remark);
             itemIoRepository.save(un);
         }
+
+        // ✅ [로그] 예약 해제 (취소 시에도 호출되므로, 중복될 수 있으나 명시적 호출을 위해 남김)
+        if (!"취소로 인한 해제".equals(remark)) {
+            logService.saveLog("자재 관리", "해제", prodNo, "예약해제", remark);
+        }
     }
 
     @Transactional
@@ -266,7 +294,7 @@ public class ProdService {
 
             itemStockRepository.save(ItemStock.builder().id(id).stockQty(nz(cur.getStockQty()).subtract(qty)).allocQty(nz(cur.getAllocQty()).subtract(qty)).build());
 
-            itemStockHisRepository.save(ItemStockHis.builder().stkHisCd(newStkHisCd()).itemCd(itemCd).whCd(whCd).trxDt(LocalDateTime.now()).ioType("PROD_USED").qtyDelta(qty.negate()).allocDelta(qty.negate()).refTb("TB_PROD").refNo(prodNo).refSeq(3).remark(remark).build());
+            itemStockHisRepository.save(ItemStockHis.builder().stkHisCd(newStkHisCd()).itemCd(itemCd).whCd(whCd).trxDt(LocalDateTime.now()).ioType("PROD_USED").qtyDelta(qty.negate()).allocDelta(qty.negate()).refTb("TB_PROD").refNo(prodNo).refSeq(3).remark("생산투입").build());
             ItemIo used = new ItemIo();
             used.setIoCd(newIoCd()); used.setIoDt(LocalDate.now().toString()); used.setIoType("PROD_USED");
             used.setItemMst(io.getItemMst()); used.setFromWh(io.getToWh()); used.setQty(io.getQty());
@@ -274,6 +302,9 @@ public class ProdService {
             itemIoRepository.save(used);
         }
         prodRepository.save(Prod.builder().prodNo(prod.getProdNo()).prodDt(prod.getProdDt()).itemCd(prod.getItemCd()).planQty(prod.getPlanQty()).status("04").remark(prod.getRemark()).build());
+
+        // ✅ [로그] 생산 투입
+        logService.saveLog("생산 관리", "투입", prodNo, "생산시작", "자재 투입 완료, 생산 진행(04)");
     }
 
     @Transactional
@@ -288,6 +319,10 @@ public class ProdService {
         prodRepository.save(Prod.builder()
                 .prodNo(prod.getProdNo()).prodDt(prod.getProdDt()).itemCd(prod.getItemCd())
                 .planQty(prod.getPlanQty()).status("05").remark(prod.getRemark()).build());
+
+        // ✅ [로그] 생산 실적 등록
+        logService.saveLog("생산 실적", "등록", prodNo, "실적저장", "양품: " + goodQty + ", 불량: " + badQty);
+
         return saved;
     }
 
@@ -322,6 +357,9 @@ public class ProdService {
         prodRepository.save(Prod.builder()
                 .prodNo(prod.getProdNo()).prodDt(prod.getProdDt()).itemCd(prod.getItemCd())
                 .planQty(prod.getPlanQty()).status("07").remark(prod.getRemark()).build());
+
+        // ✅ [로그] 완제품 입고
+        logService.saveLog("생산 입고", "입고", prodNo, "입고완료", "완제품 입고 처리됨 (Status 07)");
     }
 
     @Getter @AllArgsConstructor

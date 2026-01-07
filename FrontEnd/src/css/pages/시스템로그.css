@@ -1,0 +1,204 @@
+/* ===============================
+   전체 페이지 컨테이너 (입출고 내역 스타일 적용)
+================================ */
+.log-page-container {
+    width: 100%;
+    height: 100vh;
+    background-color: #e5e5e5;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.log-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background-color: #ffffff;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ===============================
+   1. 상단 헤더 & 필터 영역
+================================ */
+.page-header {
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: #fff;
+}
+
+.page-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* 필터 그룹 (날짜, 검색바 등) */
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.date-input {
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 13px;
+    color: #374151;
+    background-color: #fff;
+    outline: none;
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.date-separator {
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.search-select {
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0 8px;
+    font-size: 13px;
+    outline: none;
+    color: #374151;
+}
+
+.search-input {
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0 10px;
+    font-size: 13px;
+    width: 200px;
+    outline: none;
+}
+
+.btn-search {
+    height: 32px;
+    padding: 0 16px;
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-search:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+/* 총 건수 뱃지 */
+.total-count-badge {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+/* ===============================
+   2. 테이블 영역 (꽉 채우기)
+================================ */
+.table-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+}
+
+/* 헤더 고정 */
+.data-table thead th {
+    background-color: #f9fafb;
+    color: #4b5563;
+    padding: 12px 8px;
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #f3f4f6;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #1f2937;
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* ===============================
+   3. 페이지네이션 (하단 고정)
+================================ */
+.pagination-bar {
+    height: 45px;
+    flex-shrink: 0;
+    border-top: 1px solid #e5e7eb;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.page-btn {
+    padding: 4px 12px;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #374151;
+}
+.page-btn:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+.page-btn:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.page-info {
+    font-size: 13px;
+    color: #4b5563;
+    font-weight: 500;
+}

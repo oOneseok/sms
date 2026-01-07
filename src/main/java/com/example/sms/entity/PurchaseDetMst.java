@@ -35,6 +35,10 @@ public class PurchaseDetMst {
     @Column(name = "WH_CD", length = 10)
     private String whCd;
 
+    //단가
+    @Column(name = "ITEM_COST")
+    private Integer itemCost;
+
     // 비고
     @Column(name = "REMARK", length = 200)
     private String remark;

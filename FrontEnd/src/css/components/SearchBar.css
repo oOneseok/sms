@@ -1,0 +1,167 @@
+/* 검색바 공통 스타일 */
+.search-bar-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-bar-inline .search-select {
+  padding: 4px 8px;
+  border: 1px solid #a0a0a0;
+  border-radius: 0;
+  font-size: 11px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  color: #000000;
+  background: #ffffff;
+  height: 24px;
+  box-sizing: border-box;
+  min-width: 100px;
+  cursor: pointer;
+}
+
+.search-bar-inline .search-select:focus {
+  outline: none;
+  border-color: #0078d4;
+  background: #fffacd;
+}
+
+.search-bar-inline .search-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #a0a0a0;
+  border-radius: 0;
+  font-size: 11px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  color: #000000;
+  background: #ffffff;
+  height: 24px;
+  box-sizing: border-box;
+  min-width: 200px;
+}
+
+.search-bar-inline .search-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  background: #fffacd;
+}
+
+/* 날짜 입력 필드 스타일 */
+.search-bar-inline .search-input[type="date"] {
+  position: relative;
+  color: #374151;
+  font-weight: 500;
+  padding-right: 8px;
+}
+
+.search-bar-inline .search-input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.search-bar-inline .search-input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.search-bar-inline .search-input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.search-bar-inline .search-input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.search-bar-inline .search-input[type="date"]::-webkit-datetime-edit-text {
+  color: #9ca3af;
+  padding: 0 2px;
+}
+
+.search-bar-inline .search-input[type="date"]::-webkit-datetime-edit-month-field,
+.search-bar-inline .search-input[type="date"]::-webkit-datetime-edit-day-field,
+.search-bar-inline .search-input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #374151;
+  font-weight: 500;
+}
+
+.search-bar-inline .search-input[type="date"]:focus::-webkit-datetime-edit-month-field,
+.search-bar-inline .search-input[type="date"]:focus::-webkit-datetime-edit-day-field,
+.search-bar-inline .search-input[type="date"]:focus::-webkit-datetime-edit-year-field {
+  color: #1f2937;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 2px;
+}
+
+.search-bar-inline .search-btn {
+  padding: 4px 12px;
+  border: 1px solid #a0a0a0;
+  border-radius: 0;
+  font-size: 11px;
+  font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+  color: #000000;
+  background: #ffffff;
+  height: 24px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.search-bar-inline .search-btn:hover {
+  background: #f0f0f0;
+}
+
+.search-bar-inline .search-btn:active {
+  background: #e0e0e0;
+}
+
+/* 검색 입력창과 조회 버튼 사이 간격 제거 */
+.search-bar-inline .search-input + .search-btn {
+  margin-left: -8px; /* gap 8px 제거 */
+  border-left: 1px solid #a0a0a0;
+}
+
+/* 별도 상태 select 스타일 */
+.status-select {
+  padding: 4px 8px;
+  border: 1px solid #a0a0a0;
+  border-radius: 0;
+  font-size: 11px;
+  height: 24px;
+  box-sizing: border-box;
+  background: #ffffff;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+/* 상태 라디오 그룹 스타일 */
+.status-radio-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #000000;
+}
+
+.status-radio input[type="radio"] {
+  width: 14px;
+  height: 14px;
+}
+
+/* 상태 라디오 위치를 위로 올리기 (필터 레이블과 정렬 맞춤) */
+.filter-field-status {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  margin-top: -30px; /* 상태 라디오 위치 조정: -30px */
+}
+
+.filter-field-status .filter-label {
+  margin-bottom: 4px;
+}
+

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,19 +30,25 @@ public class OrderService {
     private final OrderMstRepository orderMstRepository;
     private final OrderDetMstRepository orderDetMstRepository;
     private final ItemRepository itemRepository;
-    private final CustRepository custRepository; // ✅ 추가
+    private final CustRepository custRepository;
     private final LogService logService;
 
-    /* =========================================================
-     * ✅ DTO 조회 메서드들 (프론트가 바로 쓰는 용도)
-     * ========================================================= */
+    // ✅ [확정] 타임스탬프 포맷 (년월일시분초밀리초)
+    private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
+    // ✅ [확정] 주문번호 생성: O + 타임스탬프 (예: O20250107120000123)
+    private String newOrderCd() {
+        return "O" + LocalDateTime.now().format(TS);
+    }
+
+    /* =========================================================
+     * ✅ DTO 조회 메서드들
+     * ========================================================= */
     @Transactional(readOnly = true)
     public List<OrderDto> getOrderListDto(String sort) {
         Sort.Direction dir = "ASC".equalsIgnoreCase(sort) ? Sort.Direction.ASC : Sort.Direction.DESC;
         List<OrderMst> list = orderMstRepository.findAll(Sort.by(dir, "orderDt"));
 
-        // ✅ N+1 방지: custCd 모아서 한번에 조회
         List<String> custCdList = list.stream()
                 .map(OrderMst::getCustCd)
                 .filter(cd -> cd != null && !cd.isBlank())
@@ -56,7 +63,7 @@ public class OrderService {
             dto.setOrderCd(o.getOrderCd());
             dto.setOrderDt(o.getOrderDt());
             dto.setCustCd(o.getCustCd());
-            dto.setCustNm(custNmMap.getOrDefault(o.getCustCd(), "")); // ✅
+            dto.setCustNm(custNmMap.getOrDefault(o.getCustCd(), ""));
             dto.setCustEmp(o.getCustEmp());
             dto.setRemark(o.getRemark());
             return dto;
@@ -79,7 +86,7 @@ public class OrderService {
         dto.setOrderCd(o.getOrderCd());
         dto.setOrderDt(o.getOrderDt());
         dto.setCustCd(o.getCustCd());
-        dto.setCustNm(custNm); // ✅
+        dto.setCustNm(custNm);
         dto.setCustEmp(o.getCustEmp());
         dto.setRemark(o.getRemark());
         return dto;
@@ -88,8 +95,6 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderDetDto> getOrderDetailsDto(String orderCd) {
         List<OrderDetMst> dets = orderDetMstRepository.findByIdOrderCdOrderByIdSeqNoAsc(orderCd);
-
-        // ✅ N+1 방지: itemCd 모아서 한번에 조회
         List<String> itemCdList = dets.stream()
                 .map(OrderDetMst::getItemCd)
                 .filter(cd -> cd != null && !cd.isBlank())
@@ -104,7 +109,7 @@ public class OrderService {
             dto.setOrderCd(d.getId().getOrderCd());
             dto.setSeqNo(d.getId().getSeqNo());
             dto.setItemCd(d.getItemCd());
-            dto.setItemNm(itemNmMap.getOrDefault(d.getItemCd(), "")); // ✅
+            dto.setItemNm(itemNmMap.getOrDefault(d.getItemCd(), ""));
             dto.setOrderQty(d.getOrderQty());
             dto.setWhCd(d.getWhCd());
             dto.setStatus(d.getStatus());
@@ -113,15 +118,9 @@ public class OrderService {
         }).toList();
     }
 
-    /* =========================================================
-     * ✅ 기존 엔티티 조회/저장 로직들 (필요하면 유지)
-     * ========================================================= */
-
     @Transactional(readOnly = true)
     public List<OrderMst> getOrderList(String sort) {
-        Sort.Direction dir = "ASC".equalsIgnoreCase(sort)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
+        Sort.Direction dir = "ASC".equalsIgnoreCase(sort) ? Sort.Direction.ASC : Sort.Direction.DESC;
         return orderMstRepository.findAll(Sort.by(dir, "orderDt"));
     }
 
@@ -148,16 +147,25 @@ public class OrderService {
         OrderDetIdMst id = new OrderDetIdMst();
         id.setOrderCd(orderCd);
         id.setSeqNo(seqNo);
-
         OrderDetMst det = orderDetMstRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("주문 상세 정보를 찾을 수 없습니다."));
-
         det.setStatus(newStatus);
         orderDetMstRepository.save(det);
     }
 
+    @Transactional
+    public void updateDetailWarehouse(String orderCd, Integer seqNo, String whCd) {
+        OrderDetIdMst id = new OrderDetIdMst();
+        id.setOrderCd(orderCd);
+        id.setSeqNo(seqNo);
+        OrderDetMst det = orderDetMstRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("주문 상세 정보를 찾을 수 없습니다."));
+        det.setWhCd(whCd);
+        orderDetMstRepository.save(det);
+    }
+
     /**
-     * ✅ 주문 저장 (네가 올린 코드 기반 유지)
+     * ✅ 주문 저장
      */
     @Transactional
     public String saveOrder(
@@ -175,17 +183,17 @@ public class OrderService {
         String actionType = "등록";
 
         if (!hasCd) {
-            orderCd = generateOrderCd(orderDt);
+            orderCd = newOrderCd(); // 신규 생성
         } else {
             orderCd = orderCd.trim();
         }
 
+        // 기존 내역 삭제 후 재생성 (수정 시)
         if (orderMstRepository.existsById(orderCd)) {
             actionType = "수정";
             orderDetMstRepository.deleteByIdOrderCd(orderCd);
         }
 
-        // 헤더 저장
         OrderMst mst = new OrderMst();
         mst.setOrderCd(orderCd);
         mst.setOrderDt(orderDt);
@@ -194,44 +202,34 @@ public class OrderService {
         mst.setRemark(remark);
         orderMstRepository.save(mst);
 
-        // 품목코드 일괄 조회 (N+1 방지)
-        List<String> itemCdList = details.stream()
-                .map(OrderDetMst::getItemCd)
-                .filter(cd -> cd != null && !cd.isBlank())
-                .distinct()
-                .toList();
-
-        Map<String, ItemMst> itemMap = itemRepository.findAllById(itemCdList).stream()
-                .collect(Collectors.toMap(ItemMst::getItemCd, it -> it));
-
         List<String> orderedItemNames = new ArrayList<>();
-
         int seq = 1;
+
         for (OrderDetMst d : details) {
+            // [로그] 들어온 상태값 확인
+            System.out.println(">>> [주문저장] 품목: " + d.getItemCd() + ", 수량: " + d.getOrderQty() + ", 넘어온 상태값(Status): " + d.getStatus());
+
             String itemCd = d.getItemCd();
+            if (itemCd == null || itemCd.isBlank()) throw new IllegalArgumentException("품목코드는 필수입니다.");
+            if (d.getOrderQty() == null || d.getOrderQty() <= 0) throw new IllegalArgumentException("주문수량은 1 이상이어야 합니다.");
 
-            if (itemCd == null || itemCd.isBlank()) {
-                throw new IllegalArgumentException("품목코드는 필수입니다.");
-            }
-            if (d.getOrderQty() == null || d.getOrderQty() <= 0) {
-                throw new IllegalArgumentException("주문수량은 1 이상이어야 합니다.");
-            }
-
-            ItemMst itemMst = itemMap.get(itemCd);
-            if (itemMst == null) {
-                throw new IllegalArgumentException("존재하지 않는 품목: " + itemCd);
-            }
-
-            orderedItemNames.add(itemMst.getItemNm());
+            // 품목명 조회 (로그용)
+            ItemMst itemMst = itemRepository.findById(itemCd).orElse(null);
+            if (itemMst != null) orderedItemNames.add(itemMst.getItemNm());
 
             OrderDetIdMst id = new OrderDetIdMst();
             id.setOrderCd(orderCd);
             id.setSeqNo(seq++);
-
             d.setId(id);
             d.setItemCd(itemCd);
 
-            if (d.getStatus() == null || d.getStatus().isBlank()) d.setStatus("o1");
+            // ✅ [수정] 상태값이 비어있을 때만 'o1'으로 설정 (o2가 들어오면 o2 유지)
+            if (d.getStatus() == null || d.getStatus().isBlank()) {
+                d.setStatus("o1");
+                System.out.println("   -> 상태값 없음. 'o1' (등록)으로 강제 설정됨.");
+            } else {
+                System.out.println("   -> 상태값 유지됨: " + d.getStatus());
+            }
 
             orderDetMstRepository.save(d);
         }
@@ -247,13 +245,8 @@ public class OrderService {
             }
         }
 
-        logService.saveLog(
-                "주문 관리",
-                actionType,
-                orderCd,
-                "거래처: " + (custCd == null ? "-" : custCd),
-                itemLogInfo
-        );
+        logService.saveLog("주문 관리", actionType, orderCd,
+                "거래처: " + (custCd == null ? "-" : custCd), itemLogInfo);
 
         return orderCd;
     }
@@ -265,24 +258,6 @@ public class OrderService {
         }
         orderDetMstRepository.deleteByIdOrderCd(orderCd);
         orderMstRepository.deleteById(orderCd);
-
         logService.saveLog("주문 관리", "삭제", orderCd, "주문 삭제", "삭제된 주문입니다.");
-    }
-
-    private String generateOrderCd(LocalDate orderDt) {
-        String ymd = orderDt.format(DateTimeFormatter.BASIC_ISO_DATE);
-        String prefix = "O" + ymd + "-";
-
-        int max = orderMstRepository.findAll().stream()
-                .map(OrderMst::getOrderCd)
-                .filter(cd -> cd != null && cd.startsWith(prefix))
-                .map(cd -> cd.substring(prefix.length()))
-                .mapToInt(s -> {
-                    try { return Integer.parseInt(s); }
-                    catch (Exception e) { return 0; }
-                })
-                .max().orElse(0);
-
-        return prefix + String.format("%03d", max + 1);
     }
 }

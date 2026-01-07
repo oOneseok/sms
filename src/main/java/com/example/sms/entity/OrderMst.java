@@ -6,6 +6,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Getter
@@ -29,4 +30,8 @@ public class OrderMst {
 
     @Column(name = "REMARK", length = 200)
     private String remark;
+
+    // ✅ 프론트엔드 전달용 (DB 매핑 X)
+    @Transient
+    private List<OrderDetMst> details;
 }
