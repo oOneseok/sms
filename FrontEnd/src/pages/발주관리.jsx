@@ -118,6 +118,8 @@ function 발주관리() {
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showCanceledPopup, setShowCanceledPopup] = useState(false)
   const [canceledInfo, setCanceledInfo] = useState(null)
+  // 발주 등록 완료 팝업에 사용할 정보(발주번호/담당자/금액)
+  const [completionInfo, setCompletionInfo] = useState(null)
   const [showDeletePopup, setShowDeletePopup] = useState(false)
   const [isModify, setIsModify] = useState(false)
   const [isInputting, setIsInputting] = useState(false)
@@ -131,9 +133,13 @@ function 발주관리() {
   const [pendingScrollRowId, setPendingScrollRowId] = useState(null)
 
   // 검색 필터
-  const [searchType, setSearchType] = useState('purchaseCode')
+  const [searchType, setSearchType] = useState('custCode')
   const [searchTerm, setSearchTerm] = useState('')
   const [appliedSearchTerm, setAppliedSearchTerm] = useState('')
+
+  // 상태 필터
+  const [statusFilter, setStatusFilter] = useState('')
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState('')
 
   // 날짜 범위 검색
   const [startDate, setStartDate] = useState('')
@@ -406,9 +412,9 @@ function 발주관리() {
       alert('발주일자를 입력하세요.');
       return;
     }
-    
+
     // ... (이하 기존 로직 동일)
-    
+
     // ✅ 현재 편집 중인 자재가 있으면 먼저 materialList에 반영
     let finalMaterialList = [...materialList];
     if (editingMaterialSeq !== null && materialFormData.ITEM_CD) {
@@ -427,12 +433,18 @@ function 발주관리() {
           : item
       );
     }
-    
+
     if (finalMaterialList.length === 0) {
       alert('자재를 최소 1건 이상 추가하세요.');
       return;
     }
-  
+
+    // ✅ 합계 금액(자재 목록 기준) 계산
+    const totalAmount = finalMaterialList.reduce(
+      (sum, m) => sum + (Number(m.PURCHASE_QTY || 0) * Number(m.ITEM_COST || 0)),
+      0
+    )
+
     const payload = {
       purchaseCd: formData.PURCHASE_CD ? formData.PURCHASE_CD.trim() : null, // ✅ 없으면 null (자동생성 트리거)
       purchaseDt: formData.PURCHASE_DT,
@@ -443,20 +455,29 @@ function 발주관리() {
         seqNo: m.SEQ_NO,
         itemCd: m.ITEM_CD,
         purchaseQty: Number(m.PURCHASE_QTY) || 1,
+        itemCost: Number(m.ITEM_COST) || 0, // ✅ 단가 추가
         status: m.STATUS || 'p1'
       }))
     };
-    
+
     console.log('저장 payload:', JSON.stringify(payload, null, 2));
-  
+
     try {
-      await apiFetch("/api/purchase", {
+      // ✅ 백엔드에서 실제 저장된 발주번호 응답(JSON: { purchaseCd: "P2026..." })
+      const saved = await apiFetch("/api/purchase", {
         method: "POST",
         body: JSON.stringify(payload)
       });
-  
+
+      // ✅ 팝업에서 사용할 정보(발주번호/담당자/금액) 먼저 저장
+      setCompletionInfo({
+        purchaseCode: saved?.purchaseCd || formData.PURCHASE_CD || '(자동 생성)',
+        custEmp: formData.CUST_EMP || '-',
+        amount: totalAmount
+      })
+
       await reloadOrders();
-      
+
       // 저장 완료 후 선택 초기화
       setSelectedOrder(null);
       setIsEditMode(false);
@@ -469,7 +490,7 @@ function 발주관리() {
         REMARK: ''
       });
       setMaterialFormData(createDefaultMaterialFormData());
-  
+
       setShowCompletionPopup(true);
     } catch (e) {
       console.error(e);
@@ -528,7 +549,7 @@ function 발주관리() {
       })
 
       await refreshPurchaseList()
-      
+
       // 확정 후 선택 초기화
       setSelectedOrder(null)
       setIsEditMode(false)
@@ -541,7 +562,7 @@ function 발주관리() {
         REMARK: ''
       })
       setMaterialFormData(createDefaultMaterialFormData())
-      
+
       setShowConfirmDialog(false)
       setShowConfirmedPopup(true)
     } catch (e) {
@@ -592,7 +613,7 @@ function 발주관리() {
       })
 
       await refreshPurchaseList()
-      
+
       // 취소 후 선택 초기화
       setSelectedOrder(null)
       setIsEditMode(false)
@@ -605,7 +626,7 @@ function 발주관리() {
         REMARK: ''
       })
       setMaterialFormData(createDefaultMaterialFormData())
-      
+
       setShowCancelDialog(false)
       setShowCanceledPopup(true)
     } catch (e) {
@@ -887,9 +908,12 @@ function 발주관리() {
   }
 
   const handleSearch = () => {
-    setAppliedSearchTerm(searchTerm)
+    setAppliedSearchTerm(searchTerm.trim())
     setAppliedStartDate(startDate)
     setAppliedEndDate(endDate)
+    setAppliedStatusFilter(statusFilter)
+    // 검색 버튼 누르면 검색 패널 닫기
+    setIsFilterOpen(false)
   }
 
   const handleResetFilters = () => {
@@ -899,9 +923,36 @@ function 발주관리() {
     setAppliedSearchTerm('')
     setAppliedStartDate('')
     setAppliedEndDate('')
+    setStatusFilter('')
+    setAppliedStatusFilter('')
+  }
+
+  // 발주 상태 계산 함수 (부분입고 포함)
+  const getOrderStatus = (details) => {
+    if (!details || details.length === 0) return 'p1'
+
+    const statuses = details.map(d => d.STATUS || 'p1')
+
+    // 모두 취소
+    if (statuses.every(s => s === 'p9')) return 'p9'
+    // 모두 입고완료
+    if (statuses.every(s => s === 'p3')) return 'p3'
+    // 일부 입고완료 또는 부분입고 (p3가 하나라도 있고, p1 또는 p2가 있으면)
+    const hasComplete = statuses.some(s => s === 'p3')
+    const hasPending = statuses.some(s => s === 'p1' || s === 'p2')
+    if (hasComplete && hasPending) return 'p4' // 부분입고
+    // 부분입고 상태가 있으면
+    if (statuses.some(s => s === 'p4')) return 'p4'
+    // 모두 확정
+    if (statuses.every(s => s === 'p2')) return 'p2'
+    // 확정이 하나라도 있으면 (혼합)
+    if (statuses.some(s => s === 'p2')) return 'p2'
+
+    return 'p1'
   }
 
   const filteredList = orderList.filter(order => {
+    // 날짜 범위 필터
     if (appliedStartDate || appliedEndDate) {
       const orderDate = order.PURCHASE_DT
       if (orderDate) {
@@ -910,19 +961,34 @@ function 발주관리() {
       }
     }
 
+    // 상태 필터
+    if (appliedStatusFilter) {
+      const orderStatus = getOrderStatus(order.PURCHASE_DET)
+      if (orderStatus !== appliedStatusFilter) return false
+    }
+
+    // 키워드 검색
     if (!appliedSearchTerm) return true
 
+    const term = appliedSearchTerm.toLowerCase()
     switch (searchType) {
       case 'purchaseCode':
-        return order.PURCHASE_CD?.includes(appliedSearchTerm)
+        return order.PURCHASE_CD?.toLowerCase().includes(term)
       case 'purchaseDate':
         return order.PURCHASE_DT?.includes(appliedSearchTerm)
       case 'custCode':
-        return order.CUST_CD?.includes(appliedSearchTerm)
+        // 매입처코드 또는 매입처명으로 검색
+        const cust = custMasterList.find(c => c.CUST_CD === order.CUST_CD)
+        const custNm = cust?.CUST_NM || ''
+        return order.CUST_CD?.toLowerCase().includes(term) || custNm.toLowerCase().includes(term)
       case 'itemName':
-        return order.PURCHASE_DET?.some(det => det.ITEM_NM?.includes(appliedSearchTerm))
+        // 자재코드 또는 자재명으로 검색
+        return order.PURCHASE_DET?.some(det =>
+          det.ITEM_CD?.toLowerCase().includes(term) ||
+          det.ITEM_NM?.toLowerCase().includes(term)
+        )
       case 'custEmp':
-        return order.CUST_EMP?.includes(appliedSearchTerm)
+        return order.CUST_EMP?.toLowerCase().includes(term)
       default:
         return true
     }
@@ -949,8 +1015,16 @@ function 발주관리() {
       aValue = a.PURCHASE_DET?.[0]?.[sortColumn] || ''
       bValue = b.PURCHASE_DET?.[0]?.[sortColumn] || ''
     } else if (sortColumn === 'totalAmount') {
-      aValue = (a.PURCHASE_DET || []).reduce((sum, det) => sum + Number(det.PURCHASE_QTY || 0) * Number(det.ITEM_COST || 0), 0)
-      bValue = (b.PURCHASE_DET || []).reduce((sum, det) => sum + Number(det.PURCHASE_QTY || 0) * Number(det.ITEM_COST || 0), 0)
+      aValue = (a.PURCHASE_DET || []).reduce((sum, det) => {
+        const itemInfo = materialMasterList.find(m => m.ITEM_CD === det.ITEM_CD)
+        const itemCost = det.ITEM_COST || itemInfo?.ITEM_COST || 0
+        return sum + Number(det.PURCHASE_QTY || 0) * Number(itemCost)
+      }, 0)
+      bValue = (b.PURCHASE_DET || []).reduce((sum, det) => {
+        const itemInfo = materialMasterList.find(m => m.ITEM_CD === det.ITEM_CD)
+        const itemCost = det.ITEM_COST || itemInfo?.ITEM_COST || 0
+        return sum + Number(det.PURCHASE_QTY || 0) * Number(itemCost)
+      }, 0)
     }
 
     if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -1043,8 +1117,8 @@ function 발주관리() {
 
         {/* 메인 콘텐츠 레이아웃 */}
         <div className="order-content-layout">
-          {/* 왼쪽: 발주 목록 */}
-          <div className="order-list-panel">
+          {/* 왼쪽: 발주 목록 - order-list-panel → customer-list-panel */}
+          <div className="customer-list-panel">
             <div className="list-table-wrapper" ref={listTableWrapperRef}>
               <div className={`filter-slide ${isFilterOpen ? 'open' : ''}`}>
                 <div className="advanced-filter-panel">
@@ -1067,10 +1141,26 @@ function 발주관리() {
                         />
                       </div>
                     </div>
+                    <div className="filter-field">
+                      <label className="filter-label">상태</label>
+                      <select
+                        className="filter-select"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                      >
+                        <option value="">전체</option>
+                        <option value="p1">발주등록</option>
+                        <option value="p2">발주확정</option>
+                        <option value="p4">부분입고</option>
+                        <option value="p3">입고완료</option>
+                        <option value="p9">취소됨</option>
+                      </select>
+                    </div>
                     <div className="filter-field filter-field-keyword">
                       <label className="filter-label">키워드 검색</label>
                       <SearchBar
                         searchOptions={[
+                          { value: 'purchaseCode', label: '발주번호', type: 'text' },
                           { value: 'custCode', label: '매입처', type: 'text' },
                           { value: 'itemName', label: '자재명', type: 'text' },
                           { value: 'custEmp', label: '담당자', type: 'text' }
@@ -1145,7 +1235,12 @@ function 발주관리() {
                 <tbody>
                   {currentItems.map((order, index) => {
                     const details = order.PURCHASE_DET || []
-                    const totalAmount = details.reduce((sum, det) => sum + Number(det.PURCHASE_QTY || 0) * Number(det.ITEM_COST || 0), 0)
+                    const totalAmount = details.reduce((sum, det) => {
+                      // ITEM_COST가 없으면 materialMasterList에서 조회
+                      const itemInfo = materialMasterList.find(m => m.ITEM_CD === det.ITEM_CD)
+                      const itemCost = det.ITEM_COST || itemInfo?.ITEM_COST || 0
+                      return sum + Number(det.PURCHASE_QTY || 0) * Number(itemCost)
+                    }, 0)
                     const previewItems = details.slice(0, 1)
                     const overflowCount = details.length > 1 ? details.length - 1 : 0
                     const itemCdText = previewItems.map(det => det.ITEM_CD).filter(Boolean).join(', ')
@@ -1156,15 +1251,17 @@ function 발주관리() {
                         'p1': '발주등록',
                         'p2': '발주확정',
                         'p3': '입고완료',
+                        'p4': '부분입고',
                         'p9': '취소됨'
                     }
-                    const firstStatus = details.length > 0 ? details[0].STATUS : 'p1'
-                    const statusText = statusMap[firstStatus] || '발주등록'
-                    
+                    const orderStatus = getOrderStatus(details)
+                    const statusText = statusMap[orderStatus] || '발주등록'
+
                     let statusClass = 'status-color-pending'; // 기본(p1): 주황
-                    if (firstStatus === 'p2') statusClass = 'status-color-confirmed'; // p2: 초록
-                    else if (firstStatus === 'p3') statusClass = 'status-color-complete'; // p3: 파랑 (CSS 추가 필요)
-                    else if (firstStatus === 'p9') statusClass = 'status-color-cancelled'; // p9: 빨강
+                    if (orderStatus === 'p2') statusClass = 'status-color-confirmed'; // p2: 초록
+                    else if (orderStatus === 'p3') statusClass = 'status-color-complete'; // p3: 파랑
+                    else if (orderStatus === 'p4') statusClass = 'status-color-partial'; // p4: 보라 (부분입고)
+                    else if (orderStatus === 'p9') statusClass = 'status-color-cancelled'; // p9: 빨강
 
                     return (
                       <tr
@@ -1203,8 +1300,8 @@ function 발주관리() {
             />
           </div>
 
-          {/* 오른쪽: 상세 정보 및 자재 목록 */}
-          <div className="order-detail-panel">
+          {/* 오른쪽: 상세 정보 및 자재 목록 - order-detail-panel → customer-detail-panel */}
+          <div className="customer-detail-panel">
             <div className="detail-header">
               <div className="detail-title-wrap">
                 <div className="detail-title-row">
@@ -1292,8 +1389,8 @@ function 발주관리() {
                             setShowCustPopup(true)
                           }
                         }}
-                        style={{ 
-                          cursor: (!isCompleted && !isReadOnly && (selectedOrder === null || isEditMode)) ? 'pointer' : 'default' 
+                        style={{
+                          cursor: (!isCompleted && !isReadOnly && (selectedOrder === null || isEditMode)) ? 'pointer' : 'default'
                         }}
                         placeholder="클릭하여 매입처 선택"
                       />
@@ -1307,7 +1404,7 @@ function 발주관리() {
                         onChange={handleInputChange}
                         disabled={isCompleted || isReadOnly || (selectedOrder !== null && !isEditMode)}
                         readOnly={isCompleted || isReadOnly}
-                        placeholder="담당자명 (자동입력)"
+                        placeholder="담당자명"
                       />
                     </div>
                   </div>
@@ -1466,8 +1563,9 @@ function 발주관리() {
                       )}
                     </div>
                   </div>
-                  <div className="table-wrapper">
-                    <table className="excel-table">
+                  {/* 발주 자재 목록 전용 래퍼/테이블 클래스 추가 */}
+                  <div className="table-wrapper purchase-item-table-wrapper">
+                    <table className="excel-table purchase-item-table">
                       <thead>
                         <tr>
                           <th className="excel-th" style={{ width: '40px' }}>
@@ -1614,14 +1712,16 @@ function 발주관리() {
       {/* 자재 목록 팝업 (품목관리 데이터) */}
       {showMaterialMasterPopup && (
         <div className="popup-overlay" onClick={() => setShowMaterialMasterPopup(false)}>
-          <div className="popup-content" onClick={(e) => e.stopPropagation()}>
+          {/* 자재 목록 팝업 전용 클래스 추가 */}
+          <div className="popup-content material-master-popup" onClick={(e) => e.stopPropagation()}>
             <div className="popup-header">
               <h3 className="popup-title">자재 목록 (품목관리)</h3>
               <button className="popup-close-btn" onClick={() => setShowMaterialMasterPopup(false)}>×</button>
             </div>
             <div className="popup-body">
               <div className="table-wrapper" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                <table className="excel-table">
+                {/* 팝업 테이블 전용 클래스 추가 */}
+                <table className="excel-table material-master-table">
                   <thead>
                     <tr>
                       <th className="excel-th">
@@ -1708,13 +1808,15 @@ function 발주관리() {
                 <p style={{ margin: '0 0 15px 0', fontWeight: '600' }}>발주가 성공적으로 {isModify ? '수정' : '등록'}되었습니다.</p>
                 <div style={{ textAlign: 'left', background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                   <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '13px' }}>
-                    발주번호: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{formData.PURCHASE_CD}</span>
+                    발주번호: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{completionInfo?.purchaseCode ?? '-'}</span>
                   </p>
                   <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '13px' }}>
-                    담당자: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{formData.CUST_EMP || '-'}</span>
+                    담당자: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{completionInfo?.custEmp ?? '-'}</span>
                   </p>
                   <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '13px' }}>
-                    발주 금액: <span style={{ fontWeight: '700', color: '#ef4444', marginLeft: '8px', fontSize: '15px' }}>{materialList.reduce((sum, m) => sum + (Number(m.PURCHASE_QTY || 0) * Number(m.ITEM_COST || 0)), 0).toLocaleString()}원</span>
+                    발주 금액: <span style={{ fontWeight: '700', color: '#ef4444', marginLeft: '8px', fontSize: '15px' }}>
+                      {Number(completionInfo?.amount ?? 0).toLocaleString()}원
+                    </span>
                   </p>
                 </div>
               </div>
@@ -1921,7 +2023,8 @@ function 발주관리() {
       {/* 거래처(매입처) 선택 팝업 */}
       {showCustPopup && (
         <div className="popup-overlay" onClick={() => { setShowCustPopup(false); setSelectedCustInPopup(null); }}>
-          <div className="popup-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+          {/* 거래처 선택 팝업 전용 클래스 추가 */}
+          <div className="popup-content purchase-cust-popup" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
             <div className="popup-header">
               <h3 className="popup-title">거래처 선택 (구매처)</h3>
               <button className="popup-close-btn" onClick={() => { setShowCustPopup(false); setSelectedCustInPopup(null); }}>×</button>
@@ -1930,8 +2033,9 @@ function 발주관리() {
               <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>
                 거래처를 선택하면 발주번호, 매입처 코드, 담당자가 자동으로 입력됩니다.
               </p>
-              <div className="table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                <table className="excel-table">
+              {/* table-wrapper를 전용 클래스로 분리 */}
+              <div className="table-wrapper purchase-cust-table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table className="excel-table purchase-cust-table">
                   <thead>
                     <tr>
                       <th className="excel-th" style={{ width: '40px' }}>선택</th>

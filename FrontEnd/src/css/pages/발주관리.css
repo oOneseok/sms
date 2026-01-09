@@ -303,8 +303,8 @@
     overflow: hidden;
 }
 
-/* 왼쪽: 목록 패널 */
-.order-list-panel {
+/* 왼쪽: 목록 패널 - 이름을 customer-list-panel로 변경, 거래처관리 스타일 사용 */
+.customer-list-panel {
     width: 60%;
     border-right: 1px solid #a0a0a0;
     display: flex;
@@ -312,7 +312,7 @@
     overflow: hidden;
 }
 
-.order-list-panel .list-table-wrapper .filter-slide {
+.customer-list-panel .list-table-wrapper .filter-slide {
     display: none;
     position: absolute;
     top: 41px;
@@ -321,45 +321,45 @@
     z-index: 60;
 }
 
-.order-list-panel .list-table-wrapper .filter-slide.open {
+.customer-list-panel .list-table-wrapper .filter-slide.open {
     display: block;
 }
 
 
-.order-list-panel .advanced-filter-panel {
+.customer-list-panel .advanced-filter-panel {
     position: relative;
     z-index: 60;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.order-list-panel .filter-slide .advanced-filter-panel {
+.customer-list-panel .filter-slide .advanced-filter-panel {
     position: relative !important;
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
 }
 
-.order-list-panel .advanced-filter-panel .filter-row {
+.customer-list-panel .advanced-filter-panel .filter-row {
     flex-wrap: wrap;
     row-gap: 10px;
     column-gap: 12px;
     align-items: flex-end;
 }
 
-.order-list-panel .advanced-filter-panel .filter-field-keyword {
+.customer-list-panel .advanced-filter-panel .filter-field-keyword {
     margin-left: 0;
 }
 
-.order-list-panel .advanced-filter-panel .filter-actions {
+.customer-list-panel .advanced-filter-panel .filter-actions {
     margin-left: auto;
     flex: 0 0 auto;
 }
 
-.order-list-panel .advanced-filter-panel .search-bar-inline .search-input {
+.customer-list-panel .advanced-filter-panel .search-bar-inline .search-input {
     width: 315px !important;
     min-width: auto !important;
 }
-.order-list-panel .advanced-filter-panel .search-bar-inline .search-select {
+.customer-list-panel .advanced-filter-panel .search-bar-inline .search-select {
     width: 90px !important;
     min-width: auto !important;
 }
@@ -367,6 +367,7 @@
 .list-table-wrapper {
     flex: 1;
     overflow-y: auto;
+    /* 사업장관리와 동일하게 가로 스크롤 허용 (컬럼 잘림 방지) */
     overflow-x: auto;
     border: 1px solid #a0a0a0;
     border-top: none;
@@ -375,18 +376,19 @@
     position: relative;
 }
 
-/* 오른쪽: 상세 정보 패널 */
-.order-detail-panel {
+/* 오른쪽: 상세 정보 패널 - 이름을 customer-detail-panel로 변경, 거래처관리 스타일 사용 */
+.customer-detail-panel {
     width: 40%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: #ffffff;
     position: relative;
+    right: 10px;
 }
 
 /* 상세 패널 내부 스크롤 영역에서 하단 버튼 영역 확보 */
-.order-detail-panel .detail-content {
+.customer-detail-panel .detail-content {
     padding-bottom: 70px; /* footer 높이 + 여유 공간 */
 }
 
@@ -682,7 +684,8 @@
 .table-wrapper {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden;
+    /* 자재목록도 컬럼 잘리지 않도록 가로 스크롤 허용 */
+    overflow-x: auto;
     min-height: 0;
 }
 
@@ -691,7 +694,12 @@
     border-collapse: collapse;
     font-size: 11px;
     font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+}
+
+/* 발주 목록 테이블 - 패널 너비에 맞게 고정 */
+.order-list-panel .excel-table {
     table-layout: fixed;
+    width: 100%;
 }
 
 .excel-th {
@@ -873,58 +881,75 @@
     background: #d0e8ff;
 }
 
-/* 발주 목록 테이블 컬럼 너비 */
-.order-list-panel .order-th:nth-child(1),
-.order-list-panel .order-td:nth-child(1) {
-    width: 40px;
+/* 발주 목록 테이블 컬럼 너비 - 퍼센트로 패널에 맞춤 */
+.order-list-panel .excel-th:nth-child(1),
+.order-list-panel .excel-td:nth-child(1) {
+    width: 5%; /* No */
 }
 
-.order-list-panel .order-th:nth-child(2),
-.order-list-panel .order-td:nth-child(2) {
-    width: 150px; /* 발주번호 */
+.order-list-panel .excel-th:nth-child(2),
+.order-list-panel .excel-td:nth-child(2) {
+    width: 17%; /* 발주번호 */
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.order-list-panel .excel-th:nth-child(3),
+.order-list-panel .excel-td:nth-child(3) {
+    width: 12%; /* 매입처 */
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.order-list-panel .order-th:nth-child(3),
-.order-list-panel .order-td:nth-child(3) {
-    width: 100px; /* 매입처 */
-}
-
-.order-list-panel .order-th:nth-child(4),
-.order-list-panel .order-td:nth-child(4) {
-    width: 90px; /* 자재코드 */
-}
-
-.order-list-panel .order-th:nth-child(5),
-.order-list-panel .order-td:nth-child(5) {
-    width: 140px;
-    max-width: 140px;
+.order-list-panel .excel-th:nth-child(4),
+.order-list-panel .excel-td:nth-child(4) {
+    width: 12%; /* 자재코드 */
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap; /* 자재명 */
+    white-space: nowrap;
 }
 
-.order-list-panel .order-th:nth-child(6),
-.order-list-panel .order-td:nth-child(6) {
-    width: 90px; /* 금액 */
+.order-list-panel .excel-th:nth-child(5),
+.order-list-panel .excel-td:nth-child(5) {
+    width: 18%; /* 자재명 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.order-list-panel .excel-th:nth-child(6),
+.order-list-panel .excel-td:nth-child(6) {
+    width: 12%; /* 금액 */
     text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.order-list-panel .order-th:nth-child(7),
-.order-list-panel .order-td:nth-child(7) {
-    width: 80px; /* 담당자 */
+.order-list-panel .excel-th:nth-child(7),
+.order-list-panel .excel-td:nth-child(7) {
+    width: 8%; /* 담당자 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.order-list-panel .order-th:nth-child(8),
-.order-list-panel .order-td:nth-child(8) {
-    width: 90px; /* 발주일자 */
+.order-list-panel .excel-th:nth-child(8),
+.order-list-panel .excel-td:nth-child(8) {
+    width: 10%; /* 발주일자 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.order-list-panel .order-th:nth-child(9),
-.order-list-panel .order-td:nth-child(9) {
-    width: 70px; /* 상태 */
+.order-list-panel .excel-th:nth-child(9),
+.order-list-panel .excel-td:nth-child(9) {
+    width: 6%; /* 상태 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* 자재 목록 테이블용 셀 스타일 */
@@ -943,12 +968,34 @@
 }
 
 .material-td input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid #666666; /* 연한 블랙 계열 테두리 */
+    background-color: #ffffff; /* 클릭 전: 흰 배경 */
     cursor: pointer;
     margin: 0 auto;
     display: block;
+    position: relative;
+}
 
+.material-td input[type="checkbox"]::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -55%);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.material-td input[type="checkbox"]:checked {
+    background-color: #3b728c; /* 클릭 후: 색 채워짐 */
+    border-color: #555555;     /* 클릭 후: 살짝 더 진한 블랙 계열 */
 }
 
 .material-td:first-child {
@@ -969,6 +1016,75 @@
 
 .excel-tr.selected .material-td.excel-td-number {
     background: #d0e8ff;
+}
+
+/* 왼쪽 발주 목록(리스트) 글자 조금 작게 조정 */
+.customer-list-panel .excel-th,
+.customer-list-panel .excel-td,
+.customer-list-panel .order-th,
+.customer-list-panel .order-td {
+    font-size: 9px;
+}
+
+/* ===== 오른쪽 상세의 '발주 자재 목록' 테이블 전용 크기 축소 ===== */
+.purchase-item-table-wrapper .purchase-item-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th,
+.purchase-item-table-wrapper .purchase-item-table .excel-td,
+.purchase-item-table-wrapper .purchase-item-table .order-th,
+.purchase-item-table-wrapper .purchase-item-table .order-td {
+    padding: 4px 6px;   /* 기본보다 살짝 줄이기 */
+    font-size: 10px;    /* 왼쪽 목록보다 약간 작게 */
+    line-height: 1.2;
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-td-number,
+.purchase-item-table-wrapper .purchase-item-table .order-td.excel-td-number {
+    width: 46px;
+}
+
+/* 각 컬럼 너비 조정 (체크박스 / No / 코드 / 자재명 / 단위 / 수량 / 단가 / 금액) */
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(1),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(1) {
+    width: 6%;   /* 체크박스 */
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(2),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(2) {
+    width: 8%;   /* No */
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(3),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(3) {
+    width: 16%;  /* 코드(자재코드) */
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(4),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(4) {
+    width: 30%;  /* 자재명 */
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(5),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(5) {
+    width: 10%;  /* 단위 */
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(6),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(6) {
+    width: 10%;  /* 수량 */
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(7),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(7) {
+    width: 10%;  /* 단가 */
+}
+
+.purchase-item-table-wrapper .purchase-item-table .excel-th:nth-child(8),
+.purchase-item-table-wrapper .purchase-item-table .excel-td:nth-child(8) {
+    width: 10%;  /* 금액 */
 }
 
 /* 자재 목록 테이블 컬럼 너비 - 비율로 조정하여 스크롤바 없이 영역에 맞게 표시 */
@@ -1026,6 +1142,151 @@
     max-width: 12%;
 }
 
+/* ===== 자재목록보기 팝업(자재 목록 (품목관리)) 전용 테이블 크기 축소 ===== */
+.material-master-popup .material-master-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.material-master-popup .material-master-table .excel-th,
+.material-master-popup .material-master-table .excel-td {
+    padding: 3px 4px;      /* 팝업 안에서만 더 작게 */
+    font-size: 11px;       /* 팝업 글자 크기 (주문관리와 동일) */
+    line-height: 1.2;
+}
+
+.material-master-popup .material-master-table .excel-td-number {
+    width: 40px;
+    min-width: 40px;
+}
+
+/* 팝업 각 컬럼 너비 조정 (체크박스 / No / 자재코드 / 자재명 / 규격 / 단위 / 단가) */
+.material-master-popup .material-master-table .excel-th:nth-child(1),
+.material-master-popup .material-master-table .excel-td:nth-child(1) {
+    width: 6%;   /* 체크박스 */
+}
+
+.material-master-popup .material-master-table .excel-th:nth-child(2),
+.material-master-popup .material-master-table .excel-td:nth-child(2) {
+    width: 8%;   /* No */
+}
+
+.material-master-popup .material-master-table .excel-th:nth-child(3),
+.material-master-popup .material-master-table .excel-td:nth-child(3) {
+    width: 18%;  /* 자재코드 */
+}
+
+.material-master-popup .material-master-table .excel-th:nth-child(4),
+.material-master-popup .material-master-table .excel-td:nth-child(4) {
+    width: 30%;  /* 자재명 */
+}
+
+.material-master-popup .material-master-table .excel-th:nth-child(5),
+.material-master-popup .material-master-table .excel-td:nth-child(5) {
+    width: 18%;  /* 규격 */
+}
+
+.material-master-popup .material-master-table .excel-th:nth-child(6),
+.material-master-popup .material-master-table .excel-td:nth-child(6) {
+    width: 10%;  /* 단위 */
+}
+
+.material-master-popup .material-master-table .excel-th:nth-child(7),
+.material-master-popup .material-master-table .excel-td:nth-child(7) {
+    width: 10%;  /* 단가 */
+}
+
+/* ===== 거래처 선택(구매처) 팝업 전용 table-wrapper/테이블 폭 축소 ===== */
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th,
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td {
+    padding: 4px 6px;      /* 공통보다 살짝 줄인 여백 */
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td-number {
+    width: 46px;
+}
+
+/* 컬럼 폭: 선택 / No / 거래처코드 / 거래처명 / 대표자 / 사업자번호 / 담당자 / 전화번호 */
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(1),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(1) {
+    width: 6%;   /* 선택(라디오) */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(2),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(2) {
+    width: 8%;   /* No */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(3),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(3) {
+    width: 14%;  /* 거래처코드 */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(4),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(4) {
+    width: 22%;  /* 거래처명 */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(5),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(5) {
+    width: 12%;  /* 대표자 */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(6),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(6) {
+    width: 14%;  /* 사업자번호 */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(7),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(7) {
+    width: 12%;  /* 담당자 */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-th:nth-child(8),
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table .excel-td:nth-child(8) {
+    width: 12%;  /* 전화번호 */
+}
+
+/* 거래처 선택 팝업의 라디오 버튼을 네모 형태로 변경 */
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid #666666; /* 연한 블랙 계열 테두리 */
+    background-color: #ffffff; /* 클릭 전: 흰 배경 */
+    cursor: pointer;
+    position: relative;
+    margin: 0;
+    vertical-align: middle;
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table input[type="radio"]:checked {
+    background-color: #3b728c; /* 클릭 후: 색 채워짐 */
+    border-color: #555555;     /* 클릭 후: 살짝 더 진한 블랙 계열 */
+}
+
+.purchase-cust-popup .purchase-cust-table-wrapper .purchase-cust-table input[type="radio"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -55%);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1;
+}
+
 /* 팝업 스타일 */
 .popup-overlay {
     position: fixed;
@@ -1049,7 +1310,7 @@
     max-width: 720px;
     max-height: 80vh;
     display: flex;
-    box-sizing: border-box; 
+    box-sizing: border-box;
     flex-direction: column;
     overflow: hidden;
 }
@@ -1111,4 +1372,21 @@
 
 .status-color-complete {
     color: #2563eb; /* 선명한 블루 */
+}
+
+.status-color-partial {
+    color: #7c3aed; /* 보라색 - 부분입고 */
+    font-weight: 600;
+}
+
+.status-color-pending {
+    color: #ea580c; /* 주황 */
+}
+
+.status-color-confirmed {
+    color: #16a34a; /* 초록 */
+}
+
+.status-color-cancelled {
+    color: #dc2626; /* 빨강 */
 }

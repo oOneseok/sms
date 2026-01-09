@@ -1,5 +1,96 @@
 @import "../components/erp-button.css";
 
+/* ===== 고객사(판매처) 선택 팝업 전용 table-wrapper/테이블 폭 & 버튼 스타일 ===== */
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th,
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td {
+    padding: 4px 6px;      /* 발주 쪽 매입처 팝업과 동일하게 살짝 줄인 여백 */
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td-number {
+    width: 46px;
+}
+
+/* 컬럼 폭: 선택 / No / 고객사코드 / 고객사명 / 대표자 / 사업자번호 / 담당자 / 전화번호 */
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(1),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(1) {
+    width: 6%;   /* 선택(라디오) */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(2),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(2) {
+    width: 8%;   /* No */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(3),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(3) {
+    width: 14%;  /* 고객사코드 */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(4),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(4) {
+    width: 22%;  /* 고객사명 */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(5),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(5) {
+    width: 12%;  /* 대표자 */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(6),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(6) {
+    width: 14%;  /* 사업자번호 */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(7),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(7) {
+    width: 12%;  /* 담당자 */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-th:nth-child(8),
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table .excel-td:nth-child(8) {
+    width: 12%;  /* 전화번호 */
+}
+
+/* 고객사 선택 팝업의 라디오 버튼을 네모 형태 + 연한 블랙 테두리로 커스텀 */
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid #666666; /* 연한 블랙 계열 테두리 */
+    background-color: #ffffff; /* 클릭 전: 흰 배경 */
+    cursor: pointer;
+    position: relative;
+    margin: 0;
+    vertical-align: middle;
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table input[type="radio"]:checked {
+    background-color: #3b728c; /* 클릭 후: 색 채워짐 */
+    border-color: #555555;     /* 클릭 후: 살짝 더 진한 블랙 계열 */
+}
+
+.customer-cust-popup .customer-cust-table-wrapper .customer-cust-table input[type="radio"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -55%);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1;
+}
+
 /* 주문 관리 페이지 스타일 */
 .order-management-container {
     width: 100%;
@@ -158,7 +249,7 @@
 
 .excel-btn-modify {
     background: #ffffff;
-    color: #000000; 
+    color: #000000;
 }
 
 .excel-btn-modify:hover:not(:disabled) {
@@ -353,8 +444,8 @@
     overflow: hidden;
 }
 
-/* 왼쪽: 목록 패널 */
-.order-list-panel {
+/* 왼쪽: 목록 패널 - customer-list-panel 이름과 거래처관리 스타일 사용 */
+.customer-list-panel {
     width: 60%;
     border-right: 1px solid #a0a0a0;
     display: flex;
@@ -362,7 +453,7 @@
     overflow: hidden;
 }
 
-.order-list-panel .list-table-wrapper .filter-slide {
+.customer-list-panel .list-table-wrapper .filter-slide {
     display: none;
     position: absolute;
     top: 0px;
@@ -371,11 +462,11 @@
     z-index: 60;
 }
 
-.order-list-panel .list-table-wrapper .filter-slide.open {
+.customer-list-panel .list-table-wrapper .filter-slide.open {
     display: block;
-} 
+}
 
-.order-list-panel .advanced-filter-panel {
+.customer-list-panel .advanced-filter-panel {
     background: #f8f9fa;
     border-bottom: 1px solid #ccc;
     padding: 10px 12px;
@@ -385,35 +476,38 @@
     right: 0;
     z-index: 100;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-} 
+}
 
-.order-list-panel .advanced-filter-panel .filter-row {
+.customer-list-panel .advanced-filter-panel .filter-row {
     flex-wrap: wrap;
     row-gap: 10px;
     column-gap: 12px;
     align-items: flex-end;
 }
 
-.order-list-panel .advanced-filter-panel .filter-field-keyword {
+.customer-list-panel .advanced-filter-panel .filter-field-keyword {
     margin-left: 0;
 }
 
-.order-list-panel .advanced-filter-panel .filter-actions {
+.customer-list-panel .advanced-filter-panel .filter-actions {
     margin-left: auto;
     flex: 0 0 auto;
 }
 
-.order-list-panel .advanced-filter-panel .search-bar-inline .search-input {
+.customer-list-panel .advanced-filter-panel .search-bar-inline .search-input {
     width: 315px !important;
     min-width: auto !important;
 }
-.order-list-panel .advanced-filter-panel .search-bar-inline .search-select {
+.customer-list-panel .advanced-filter-panel .search-bar-inline .search-select {
     width: 90px !important;
     min-width: auto !important;
 }
 
 .list-table-wrapper {
     flex: 1;
+    overflow-y: auto;
+    /* 사업장/거래처 화면처럼 목록이 잘리지 않게 가로 스크롤 허용 */
+    overflow-x: auto;
     border: 1px solid #a0a0a0;
     border-top: none;
     border-right: none;
@@ -421,14 +515,15 @@
     position: relative;
 }
 
-/* 오른쪽: 상세 정보 패널 */
-.order-detail-panel {
+/* 오른쪽: 상세 정보 패널 - customer-detail-panel 이름과 거래처관리 스타일 사용 */
+.customer-detail-panel {
     width: 40%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: #ffffff;
     position: relative;
+    right: 10px;
 }
 
 .detail-header {
@@ -825,6 +920,7 @@
 .table-wrapper {
     flex: 1;
     overflow-y: auto;
+    /* 품목 목록은 기존 동작 유지 (가로 스크롤 허용) */
     overflow-x: auto;
     min-height: 0;
 }
@@ -834,6 +930,12 @@
     border-collapse: collapse;
     font-size: 11px;
     font-family: 'Malgun Gothic', '맑은 고딕', 'Arial', sans-serif;
+}
+
+/* 주문 목록 테이블 - 패널 너비에 맞게 고정 */
+.order-list-panel .excel-table {
+    table-layout: fixed;
+    width: 100%;
 }
 
 .excel-th {
@@ -931,6 +1033,123 @@
     background: #d0e8ff;
 }
 
+/* 주문관리 왼쪽 목록(리스트) 글자도 발주관리와 동일하게 살짝 작게 */
+.customer-list-panel .excel-th,
+.customer-list-panel .excel-td {
+    font-size: 9px;
+}
+
+/* ===== 품목목록 팝업 전용 테이블 크기 축소 ===== */
+.item-master-popup .item-master-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.item-master-popup .item-master-table .excel-th,
+.item-master-popup .item-master-table .excel-td {
+    padding: 3px 4px;      /* 팝업 안에서만 더 작게 */
+    font-size: 11px;       /* 팝업 글자 크기 11px */
+    line-height: 1.2;
+}
+
+.item-master-popup .item-master-table .excel-td-number {
+    width: 40px;
+    min-width: 40px;
+}
+
+/* 품목목록 팝업 각 컬럼 너비를 전체적으로 줄여서 한 화면에 잘 보이도록 조정 */
+.item-master-popup .item-master-table .excel-th:nth-child(1),
+.item-master-popup .item-master-table .excel-td:nth-child(1) {
+    width: 6%;   /* 체크박스 */
+}
+
+.item-master-popup .item-master-table .excel-th:nth-child(2),
+.item-master-popup .item-master-table .excel-td:nth-child(2) {
+    width: 8%;   /* No */
+}
+
+.item-master-popup .item-master-table .excel-th:nth-child(3),
+.item-master-popup .item-master-table .excel-td:nth-child(3) {
+    width: 18%;  /* 품목코드 */
+}
+
+.item-master-popup .item-master-table .excel-th:nth-child(4),
+.item-master-popup .item-master-table .excel-td:nth-child(4) {
+    width: 30%;  /* 품목명 */
+}
+
+.item-master-popup .item-master-table .excel-th:nth-child(5),
+.item-master-popup .item-master-table .excel-td:nth-child(5) {
+    width: 18%;  /* 규격 */
+}
+
+.item-master-popup .item-master-table .excel-th:nth-child(6),
+.item-master-popup .item-master-table .excel-td:nth-child(6) {
+    width: 10%;  /* 단위 */
+}
+
+.item-master-popup .item-master-table .excel-th:nth-child(7),
+.item-master-popup .item-master-table .excel-td:nth-child(7) {
+    width: 10%;  /* 단가 */
+}
+
+/* ===== 주문 상세의 '주문 품목 목록' 테이블 전용 크기 축소 ===== */
+.order-item-table-wrapper .order-item-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.order-item-table-wrapper .order-item-table .excel-th,
+.order-item-table-wrapper .order-item-table .excel-td {
+    padding: 4px 6px;     /* 기본보다 살짝 줄이기 */
+    font-size: 10px;      /* 왼쪽 목록보다는 약간 작게 */
+    line-height: 1.2;
+}
+
+.order-item-table-wrapper .order-item-table .excel-td-number {
+    width: 46px;          /* No 칸 좁게 */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(1),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(1) {
+    width: 6%;            /* 체크박스 */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(2),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(2) {
+    width: 8%;            /* No */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(3),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(3) {
+    width: 16%;           /* 코드 */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(4),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(4) {
+    width: 30%;           /* 품목명 */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(5),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(5) {
+    width: 10%;           /* 단위 */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(6),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(6) {
+    width: 10%;           /* 수량 */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(7),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(7) {
+    width: 10%;           /* 단가 */
+}
+
+.order-item-table-wrapper .order-item-table .excel-th:nth-child(8),
+.order-item-table-wrapper .order-item-table .excel-td:nth-child(8) {
+    width: 10%;           /* 금액 */
+}
+
 .excel-tr.total-row {
     background: #f0f4f8;
     font-weight: 600;
@@ -941,58 +1160,75 @@
     border-top: 2px solid #a0a0a0;
 }
 
-/* 주문 목록 테이블 컬럼 너비 */
+/* 주문 목록 테이블 컬럼 너비 - 퍼센트로 패널에 맞춤 */
 .order-list-panel .excel-th:nth-child(1),
 .order-list-panel .excel-td:nth-child(1) {
-    width: 40px;
+    width: 5%; /* No */
 }
 
 .order-list-panel .excel-th:nth-child(2),
 .order-list-panel .excel-td:nth-child(2) {
-    width: 150px; /* 주문번호 */
-    white-space: nowrap;
+    width: 18%; /* 주문번호 */
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .order-list-panel .excel-th:nth-child(3),
 .order-list-panel .excel-td:nth-child(3) {
-    width: 100px; /* 고객사 */
+    width: 12%; /* 고객사 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .order-list-panel .excel-th:nth-child(4),
 .order-list-panel .excel-td:nth-child(4) {
-    width: 90px; /* 품목코드 */
+    width: 12%; /* 품목코드 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .order-list-panel .excel-th:nth-child(5),
 .order-list-panel .excel-td:nth-child(5) {
-    width: 140px;
-    max-width: 140px;
+    width: 18%; /* 품목명 */
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap; /* 품목명 */
+    white-space: nowrap;
 }
 
 .order-list-panel .excel-th:nth-child(6),
 .order-list-panel .excel-td:nth-child(6) {
-    width: 90px; /* 금액 */
+    width: 12%; /* 금액 */
     text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .order-list-panel .excel-th:nth-child(7),
 .order-list-panel .excel-td:nth-child(7) {
-    width: 80px; /* 담당자 */
+    width: 8%; /* 담당자 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .order-list-panel .excel-th:nth-child(8),
 .order-list-panel .excel-td:nth-child(8) {
-    width: 90px; /* 주문일자 */
+    width: 10%; /* 주문일자 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .order-list-panel .excel-th:nth-child(9),
 .order-list-panel .excel-td:nth-child(9) {
-    width: 70px; /* 상태 */
+    width: 5%; /* 상태 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* 삭제 버튼이 있는 셀 중앙 정렬 */

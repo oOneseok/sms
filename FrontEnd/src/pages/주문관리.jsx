@@ -114,6 +114,8 @@ function 주문관리() {
     const [showCancelDialog, setShowCancelDialog] = useState(false)
     const [showCanceledPopup, setShowCanceledPopup] = useState(false)
     const [canceledInfo, setCanceledInfo] = useState(null)
+    // 주문 등록 완료 팝업에 사용할 정보(주문번호/담당자/금액)
+    const [completionInfo, setCompletionInfo] = useState(null)
     const [showDeletePopup, setShowDeletePopup] = useState(false)
     const [isModify, setIsModify] = useState(false)
     const [isInputting, setIsInputting] = useState(false)
@@ -127,16 +129,16 @@ function 주문관리() {
     const [pendingScrollRowId, setPendingScrollRowId] = useState(null)
 
     // 검색 필터
-    const [searchType, setSearchType] = useState('orderCode')
+    const [searchType, setSearchType] = useState('custCode')
     const [searchTerm, setSearchTerm] = useState('')
     const [appliedSearchTerm, setAppliedSearchTerm] = useState('')
-    
+
     // 날짜 범위 검색
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
     const [appliedStartDate, setAppliedStartDate] = useState('')
     const [appliedEndDate, setAppliedEndDate] = useState('')
-    
+
     // 필터 드롭다운 상태
     const [isFilterOpen, setIsFilterOpen] = useState(false)
 
@@ -418,7 +420,7 @@ function 주문관리() {
             alert('주문일자를 입력하세요.');
             return;
         }
-        
+
         // ✅ 현재 편집 중인 품목이 있으면 먼저 itemList에 반영
         let finalItemList = [...itemList];
         if (editingItemSeq !== null && itemFormData.ITEM_CD) {
@@ -437,11 +439,17 @@ function 주문관리() {
                     : item
             );
         }
-        
+
         if (finalItemList.length === 0) {
             alert('품목을 최소 1건 이상 추가하세요.');
             return;
         }
+
+        // ✅ 합계 금액(품목 목록 기준) 계산
+        const totalAmount = finalItemList.reduce(
+            (sum, m) => sum + (Number(m.ORDER_QTY || 0) * Number(m.ITEM_COST || 0)),
+            0
+        )
 
         const payload = {
             orderCd: formData.ORDER_CD ? formData.ORDER_CD.trim() : null, // ✅ 없으면 null (자동생성)
@@ -456,17 +464,25 @@ function 주문관리() {
                 status: m.STATUS || 'o1'
             }))
         };
-        
+
         console.log('저장 payload:', JSON.stringify(payload, null, 2));
 
         try {
-            await apiFetch("/api/order", {
+            // ✅ 백엔드에서 실제 저장된 주문번호 응답(JSON: { orderCd: "O2026..." })
+            const saved = await apiFetch("/api/order", {
                 method: "POST",
                 body: JSON.stringify(payload)
             });
 
+            // ✅ 팝업에서 사용할 정보(주문번호/담당자/금액) 먼저 저장
+            setCompletionInfo({
+                orderCode: saved?.orderCd || formData.ORDER_CD || '(자동 생성)',
+                custEmp: formData.CUST_EMP || '-',
+                amount: totalAmount
+            })
+
             await reloadOrders();
-            
+
             // 저장 완료 후 선택 초기화
             setSelectedOrder(null);
             setIsEditMode(false);
@@ -533,7 +549,7 @@ function 주문관리() {
             })
 
             await refreshOrderList()
-            
+
             // 확정 후 선택 초기화
             setSelectedOrder(null)
             setIsEditMode(false)
@@ -546,7 +562,7 @@ function 주문관리() {
                 REMARK: ''
             })
             setItemFormData(createDefaultItemFormData())
-            
+
             setShowConfirmDialog(false)
             setShowConfirmedPopup(true)
         } catch (e) {
@@ -596,7 +612,7 @@ function 주문관리() {
             })
 
             await refreshOrderList()
-            
+
             // 취소 후 선택 초기화
             setSelectedOrder(null)
             setIsEditMode(false)
@@ -609,7 +625,7 @@ function 주문관리() {
                 REMARK: ''
             })
             setItemFormData(createDefaultItemFormData())
-            
+
             setShowCancelDialog(false)
             setShowCanceledPopup(true)
         } catch (e) {
@@ -895,9 +911,11 @@ function 주문관리() {
     }
 
     const handleSearch = () => {
-        setAppliedSearchTerm(searchTerm)
+        setAppliedSearchTerm(searchTerm.trim())
         setAppliedStartDate(startDate)
         setAppliedEndDate(endDate)
+        // 검색 버튼 누르면 검색 패널 닫기
+        setIsFilterOpen(false)
     }
 
     const handleResetFilters = () => {
@@ -919,21 +937,29 @@ function 주문관리() {
                 if (appliedEndDate && orderDate > appliedEndDate) return false
             }
         }
-        
+
         // 검색어 필터
         if (!appliedSearchTerm) return true
-        
+
+        const term = appliedSearchTerm.toLowerCase()
         switch (searchType) {
             case 'orderCode':
-                return order.ORDER_CD?.includes(appliedSearchTerm)
+                return order.ORDER_CD?.toLowerCase().includes(term)
             case 'orderDate':
                 return order.ORDER_DT?.includes(appliedSearchTerm)
             case 'custCode':
-                return order.CUST_CD?.includes(appliedSearchTerm)
+                // 고객사코드 또는 고객사명으로 검색
+                const cust = custMasterList.find(c => c.CUST_CD === order.CUST_CD)
+                const custNm = cust?.CUST_NM || ''
+                return order.CUST_CD?.toLowerCase().includes(term) || custNm.toLowerCase().includes(term)
             case 'itemName':
-                return order.ORDER_DET?.some(det => det.ITEM_NM?.includes(appliedSearchTerm))
+                // 품목코드 또는 품목명으로 검색
+                return order.ORDER_DET?.some(det =>
+                    det.ITEM_CD?.toLowerCase().includes(term) ||
+                    det.ITEM_NM?.toLowerCase().includes(term)
+                )
             case 'custEmp':
-                return order.CUST_EMP?.includes(appliedSearchTerm)
+                return order.CUST_EMP?.toLowerCase().includes(term)
             default:
                 return true
         }
@@ -961,8 +987,16 @@ function 주문관리() {
             aValue = a.ORDER_DET?.[0]?.[sortColumn] || ''
             bValue = b.ORDER_DET?.[0]?.[sortColumn] || ''
         } else if (sortColumn === 'totalAmount') {
-            aValue = (a.ORDER_DET || []).reduce((sum, det) => sum + Number(det.ORDER_QTY || 0) * Number(det.ITEM_COST || 0), 0)
-            bValue = (b.ORDER_DET || []).reduce((sum, det) => sum + Number(det.ORDER_QTY || 0) * Number(det.ITEM_COST || 0), 0)
+            aValue = (a.ORDER_DET || []).reduce((sum, det) => {
+                const itemInfo = itemMasterList.find(m => m.ITEM_CD === det.ITEM_CD)
+                const itemCost = det.ITEM_COST || itemInfo?.ITEM_COST || 0
+                return sum + Number(det.ORDER_QTY || 0) * Number(itemCost)
+            }, 0)
+            bValue = (b.ORDER_DET || []).reduce((sum, det) => {
+                const itemInfo = itemMasterList.find(m => m.ITEM_CD === det.ITEM_CD)
+                const itemCost = det.ITEM_COST || itemInfo?.ITEM_COST || 0
+                return sum + Number(det.ORDER_QTY || 0) * Number(itemCost)
+            }, 0)
         }
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -1058,8 +1092,8 @@ function 주문관리() {
 
                 {/* 메인 콘텐츠 레이아웃 */}
                 <div className="order-content-layout">
-                    {/* 왼쪽: 주문 목록 */}
-                    <div className="order-list-panel">
+                    {/* 왼쪽: 주문 목록 - order-list-panel → customer-list-panel */}
+                    <div className="customer-list-panel">
                         <div className="list-table-wrapper" ref={listTableWrapperRef}>
                             <div className={`filter-slide ${isFilterOpen ? 'open' : ''}`}>
                                 <div className="advanced-filter-panel">
@@ -1086,6 +1120,7 @@ function 주문관리() {
                                             <label className="filter-label">키워드 검색</label>
                                             <SearchBar
                                                 searchOptions={[
+                                                    { value: 'orderCode', label: '주문번호', type: 'text' },
                                                     { value: 'custCode', label: '고객사', type: 'text' },
                                                     { value: 'itemName', label: '품목명', type: 'text' },
                                                     { value: 'custEmp', label: '담당자', type: 'text' }
@@ -1160,18 +1195,23 @@ function 주문관리() {
                                 <tbody>
                                 {currentItems.map((order, index) => {
                                     const details = order.ORDER_DET || []
-                                    const totalAmount = details.reduce((sum, det) => sum + Number(det.ORDER_QTY || 0) * Number(det.ITEM_COST || 0), 0)
+                                    const totalAmount = details.reduce((sum, det) => {
+                                        // ITEM_COST가 없으면 itemMasterList에서 조회
+                                        const itemInfo = itemMasterList.find(m => m.ITEM_CD === det.ITEM_CD)
+                                        const itemCost = det.ITEM_COST || itemInfo?.ITEM_COST || 0
+                                        return sum + Number(det.ORDER_QTY || 0) * Number(itemCost)
+                                    }, 0)
                                     const previewItems = details.slice(0, 1)
                                     const overflowCount = details.length > 1 ? details.length - 1 : 0
                                     const itemCdText = previewItems.map(det => det.ITEM_CD).filter(Boolean).join(', ')
                                     const itemNmText = previewItems.map(det => det.ITEM_NM).filter(Boolean).join(', ')
                                     const overflowLabel = overflowCount > 0 ? ` 외 ${overflowCount}건` : ''
-                                    
+
                                     // 상태 표시 로직 (첫 번째 품목의 상태를 대표값으로 사용)
                                     const statusMap = {
                                         'o1': '주문등록',
                                         'o2': '주문확정',
-                                        'o3': '출고완료', 
+                                        'o3': '출고완료',
                                         'o9': '취소됨'
                                     }
                                     const firstStatus = details.length > 0 ? details[0].STATUS : 'o1'
@@ -1218,7 +1258,7 @@ function 주문관리() {
                     </div>
 
                     {/* 오른쪽: 상세 정보 및 품목 목록 */}
-                    <div className="order-detail-panel">
+                    <div className="customer-detail-panel">
                         <div className="detail-header">
                             <div className="detail-title-wrap">
                                 <div className="detail-title-row">
@@ -1245,10 +1285,10 @@ function 주문관리() {
                                     {isConfirmed ? '주문 확정' : isCanceled ? '주문 취소' : isCompleted ? '등록 완료' : selectedOrder ? '수정 모드' : '신규 등록'}
                                 </span>
                                 <span className="meta-text">
-                                    {isConfirmed 
-                                        ? '주문이 확정되어 수정할 수 없습니다.' 
-                                        : isCanceled 
-                                        ? '주문이 취소되었습니다.' 
+                                    {isConfirmed
+                                        ? '주문이 확정되어 수정할 수 없습니다.'
+                                        : isCanceled
+                                        ? '주문이 취소되었습니다.'
                                         : isCompleted
                                         ? '주문이 성공적으로 등록되었습니다.'
                                         : selectedOrder
@@ -1319,7 +1359,7 @@ function 주문관리() {
                                                 onChange={handleInputChange}
                                                 disabled={isCompleted || isReadOnly || (selectedOrder !== null && !isEditMode)}
                                                 readOnly={isCompleted || isReadOnly}
-                                                placeholder="담당자명 (자동입력)"
+                                                placeholder="담당자명"
                                             />
                                         </div>
                                     </div>
@@ -1478,8 +1518,8 @@ function 주문관리() {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="table-wrapper">
-                                        <table className="excel-table">
+                                    <div className="table-wrapper order-item-table-wrapper">
+                                        <table className="excel-table order-item-table">
                                             <thead>
                                             <tr>
                                                 <th className="excel-th" style={{width:'40px'}}>
@@ -1544,22 +1584,22 @@ function 주문관리() {
                             {!isCompleted && (
                                 <div className="detail-footer">
                                     {(isEditMode || !selectedOrder) && !isReadOnly && (
-                                        <button 
-                                            className="erp-button erp-button-primary" 
-                                            onClick={handleSave} 
+                                        <button
+                                            className="erp-button erp-button-primary"
+                                            onClick={handleSave}
                                             disabled={isReadOnly}
-                                            style={{ 
-                                                backgroundColor: selectedOrder ? '#0ea5e9' : '#16a34a', 
-                                                borderColor: selectedOrder ? '#0ea5e9' : '#16a34a' 
+                                            style={{
+                                                backgroundColor: selectedOrder ? '#0ea5e9' : '#16a34a',
+                                                borderColor: selectedOrder ? '#0ea5e9' : '#16a34a'
                                             }}
                                         >
                                             {selectedOrder ? '수정 완료' : '주문 등록'}
                                         </button>
                                     )}
-                                    
+
                                     {selectedOrder && !isEditMode && !isReadOnly && (
-                                        <button 
-                                            className="erp-button erp-button-primary" 
+                                        <button
+                                            className="erp-button erp-button-primary"
                                             onClick={() => setIsEditMode(true)}
                                             style={{ backgroundColor: '#0ea5e9', borderColor: '#0ea5e9' }}
                                         >
@@ -1569,14 +1609,14 @@ function 주문관리() {
 
                                     {selectedOrder && !isReadOnly && (
                                         <>
-                                            <button 
-                                                className="erp-button" 
+                                            <button
+                                                className="erp-button"
                                                 onClick={handleConfirmOrder}
                                                 style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', color: 'white', marginLeft: '8px' }}
                                             >
                                                 주문 확정
                                             </button>
-                                            <button 
+                                            <button
                                                 className="erp-button erp-button-cancel"
                                                 onClick={handleCancelOrder}
                                                 style={{ backgroundColor: '#dc2626', borderColor: '#dc2626', color: 'white', marginLeft: '8px' }}
@@ -1625,7 +1665,8 @@ function 주문관리() {
             {/* 품목 목록 팝업 (품목관리 데이터) */}
             {showItemMasterPopup && (
                 <div className="popup-overlay" onClick={() => setShowItemMasterPopup(false)}>
-                    <div className="popup-content" onClick={(e) => e.stopPropagation()}>
+                    {/* 품목 목록 팝업 전용 클래스 추가 */}
+                    <div className="popup-content item-master-popup" onClick={(e) => e.stopPropagation()}>
                         <div className="popup-header">
                             <h3 className="popup-title">품목 목록 (품목관리)</h3>
                             <button
@@ -1637,7 +1678,8 @@ function 주문관리() {
                         </div>
                         <div className="popup-body">
                             <div className="table-wrapper" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                                <table className="excel-table">
+                                {/* 팝업 테이블 전용 클래스 추가 */}
+                                <table className="excel-table item-master-table">
                                     <thead>
                                     <tr>
                                         <th className="excel-th">
@@ -1727,13 +1769,15 @@ function 주문관리() {
                                 <p style={{ margin: '0 0 15px 0', fontWeight: '600' }}>주문이 성공적으로 {isModify ? '수정' : '등록'}되었습니다.</p>
                                 <div style={{ textAlign: 'left', background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                                     <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '13px' }}>
-                                        주문번호: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{formData.ORDER_CD}</span>
+                                        주문번호: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{completionInfo?.orderCode ?? '-'}</span>
                                     </p>
                                     <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '13px' }}>
-                                        담당자: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{formData.CUST_EMP || '-'}</span>
+                                        담당자: <span style={{ fontWeight: '600', color: '#000', marginLeft: '8px' }}>{completionInfo?.custEmp ?? '-'}</span>
                                     </p>
                                     <p style={{ margin: '8px 0', color: '#6b7280', fontSize: '13px' }}>
-                                        주문 금액: <span style={{ fontWeight: '700', color: '#ef4444', marginLeft: '8px', fontSize: '15px' }}>{itemList.reduce((sum, m) => sum + (Number(m.ORDER_QTY || 0) * Number(m.ITEM_COST || 0)), 0).toLocaleString()}원</span>
+                                        주문 금액: <span style={{ fontWeight: '700', color: '#ef4444', marginLeft: '8px', fontSize: '15px' }}>
+                                            {Number(completionInfo?.amount ?? 0).toLocaleString()}원
+                                        </span>
                                     </p>
                                 </div>
                             </div>
@@ -1960,7 +2004,8 @@ function 주문관리() {
             {/* 고객사(판매처) 선택 팝업 */}
             {showCustPopup && (
                 <div className="popup-overlay" onClick={() => { setShowCustPopup(false); setSelectedCustInPopup(null); }}>
-                    <div className="popup-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+                    {/* 발주관리의 매입처 선택 팝업과 동일하게 전용 클래스 부여 */}
+                    <div className="popup-content customer-cust-popup" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
                         <div className="popup-header">
                             <h3 className="popup-title">고객사 선택 (판매처)</h3>
                             <button
@@ -1974,8 +2019,9 @@ function 주문관리() {
                             <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>
                                 고객사를 선택하면 주문번호, 고객사 코드, 담당자가 자동으로 입력됩니다.
                             </p>
-                            <div className="table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                <table className="excel-table">
+                            {/* table-wrapper를 전용 클래스로 분리 */}
+                            <div className="table-wrapper customer-cust-table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                <table className="excel-table customer-cust-table">
                                     <thead>
                                     <tr>
                                         <th className="excel-th" style={{ width: '40px' }}>선택</th>
