@@ -3,6 +3,7 @@
     padding: 4px 6px;
     text-align: center;
 }
+
 /* ===============================
    전체 레이아웃
 ================================ */
@@ -13,8 +14,8 @@
   font-family: 'Malgun Gothic', '맑은 고딕', Arial, sans-serif;
   display: flex;
   flex-direction: column;
-  overflow: hidden; 
-  padding: 10px;    
+  overflow: hidden;
+  padding: 10px;
   box-sizing: border-box;
 }
 
@@ -31,8 +32,8 @@
 }
 
 .header-left-section {
-  flex-shrink: 0; 
-  height: 40px;   
+  flex-shrink: 0;
+  height: 40px;
   display: flex;
   align-items: center;
   margin-bottom: 10px; /* 이 여백도 필요에 따라 조절 가능 */
@@ -60,22 +61,20 @@
    좌측 패널
 ================================ */
 .order-list-panel {
-  width: 40%; /* 너비 조정 */
+  width: 40%;
   background: #ffffff;
-  border: 1px solid #d1d5db; /* 테두리 색상 통일 */
+  border: 1px solid #d1d5db;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;   /* 🔥 hidden → visible */
   border-radius: 4px;
 }
 
-.list-table-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+
+.list-table-wrapper {    /* 테이블 영역만 스크롤 */
   position: relative;
 }
+
 
 .panel-header {
   height: 34px;
@@ -87,7 +86,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+  z-index: 300;
 }
+.panel-header.filter-container {
+  position: relative;   /* 🔥 기준점 */
+  overflow: visible;    /* 🔥 필터가 아래로 나올 수 있게 */
+}
+
 
 .panel-title {
   white-space: nowrap;
@@ -133,10 +139,10 @@
     height: 100%;   /* ✅ 부모 높이 꽉 채움 */
     border: 1px solid #d1d5db;
     border-radius: 4px;
-    overflow: hidden; 
+    overflow: hidden;
     position: relative;
 }
-.detail-header, 
+.detail-header,
 .detail-meta-bar {
   flex-shrink: 0; /* 스크롤 되어도 줄어들지 않음 */
   background: #fff;
@@ -203,7 +209,7 @@
   flex-shrink: 0;       /* 크기 줄어듦 방지 */
   padding: 12px 15px;
   border-top: 1px solid #d1d5db;
-  background: #ffffff;  
+  background: #ffffff;
   display: flex;
   justify-content: flex-end;
   z-index: 10;
@@ -427,7 +433,30 @@
   color: #ffffff;
   font-weight: 700;
 }
+/* 취소 단계 자체 */
+.state-cancel {
+  color: #dc2626;
+  font-weight: 700;
+}
+.state-step.state-cancel {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  font-weight: bold;
+}
 
+
+/* ✅ 취소된 화면일 때 진행바 전체 */
+.progress-canceled .state-step {
+  color: #dc2626;
+  opacity: 0.6;
+}
+
+/* 취소 단계는 더 진하게 */
+.progress-canceled .state-cancel {
+  opacity: 1;
+  border-bottom: 2px solid #dc2626;
+}
 .status-cancel {
   color: #dc2626;
   font-weight: 700;
@@ -455,163 +484,80 @@
 .mrp-complete .excel-td {
   background: #eff6ff;
 }
-
 /* ===============================
-   검색 필터 슬라이드
+   검색 필터 레이아웃 핵심 수정
 ================================ */
-.filter-toggle-btn {
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #374151;
-  height: 24px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
 
-.filter-toggle-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.filter-toggle-btn span {
-  white-space: nowrap;
-}
-
-.order-list-panel .filter-slide {
-    display: none;
-    position: absolute;
-    top: 34px;
-    left: 0;
-    right: 0;
-    z-index: 60;
-}
-
-.filter-slide.open {
-  display: block;
-}
-
-.advanced-filter-panel {
-  background: #f8f9fa;
-  border-bottom: 1px solid #ccc;
-  padding: 10px 12px;
-
-  position: absolute;
-  /* top: 35px; */
-  left: 0;
-  right: 0;
-  z-index: 100;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.advanced-filter-panel .search-bar-inline .search-input {
-    width: 120px !important;
-    min-width: auto !important;
-}
-.advanced-filter-panel .search-bar-inline .search-select {
-    width: 90px !important;
-    min-width: auto !important;
-}
-
+/* 전체 행 */
 .filter-row {
   display: flex;
   flex-wrap: wrap;
-  row-gap: 10px;
-  column-gap: 12px;
   align-items: flex-end;
+  gap: 16px;
 }
-/* 윗줄 */
+
+/* 강제 줄바꿈 완전 제거 */
+.filter-row::after {
+  display: none;
+}
+
+/* 🔹 상단: 검색만 남김 */
 .filter-top {
   order: 1;
-}
-
-/* 아랫줄 */
-.filter-bottom {
-  order: 3;
-}
-.filter-row::after {
-  content: '';
-  flex-basis: 100%;
-  order: 2;
-}
-.filter-actions.filter-bottom {
-  margin-left: auto;
-}
-
-
-.filter-field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-.filter-field input,
-.filter-field select {
-  height: 26px;
-  font-size: 11px;
-  padding: 4px 6px;
-  border: 1px solid #c0c0c0;
-  border-radius: 3px;
 }
 
-.filter-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #333;
+/* 🔹 하단 라인 */
+.filter-bottom {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.filter-value {
-  font-size: 12px;
-  font-weight: 700;
-  color: #111;
-  padding: 4px 0;
+/* 🔹 기간을 하단으로 내림 */
+.filter-field.filter-top:first-child {
+  order: 2;                 /* 아래 줄 */
 }
 
+/* 🔹 검색은 위 줄 유지 */
+.filter-field.filter-top:nth-of-type(2) {
+  order: 1;                 /* 위 줄 */
+}
+
+/* 🔹 버튼은 항상 오른쪽 */
+.filter-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ===============================
+   SearchBar 깨짐 방지
+================================ */
+.search-bar-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.search-bar-inline .search-input {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* ===============================
+   날짜 영역
+================================ */
 .date-range-filter {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.date-separator {
-  font-size: 12px;
-  color: #555;
-}
-
-.filter-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-left: auto;
-}
-
-.production-filter-search-btn,
-.production-filter-reset-btn {
-  height: 26px;
-  padding: 0 10px;
-  font-size: 11px;
-  border: 1px solid #808080;
-  background: #ffffff;
-  cursor: pointer;
-}
-
-.production-filter-search-btn:hover,
-.production-filter-reset-btn:hover {
-  background: #f0f0f0;
-}
-
-.checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #333;
-}
 /* ===============================
    비고 전용 스타일
 ================================ */

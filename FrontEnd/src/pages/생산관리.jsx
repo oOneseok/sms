@@ -21,7 +21,8 @@ const STATE_STEPS = [
   { code: '05', label: '생산완료' },
   { code: '06', label: '창고배정' },
   { code: '07', label: '공정종료' },
-  { code: '08', label: '취소됨' }
+  { code: '08', label: '취소됨' },
+  { code: '09', label: '취소됨' }
 ];
 
 const getStatusLabel = (code) => STATE_STEPS.find(s => s.code === code)?.label || code;
@@ -69,13 +70,13 @@ export default function 생산관리() {
   const [searchTerm, setSearchTerm] = useState('');
   const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [includeCanceled, setIncludeCanceled] = useState(false);
+  const [includeCanceled, setIncludeCanceled] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
+
   // MRP 및 수동 할당 상태
-  const [selectedMrpItem, setSelectedMrpItem] = useState(null) 
+  const [selectedMrpItem, setSelectedMrpItem] = useState(null)
   const [warehouseStockMap, setWarehouseStockMap] = useState({});
-  const [manualAllocations, setManualAllocations] = useState({}); 
+  const [manualAllocations, setManualAllocations] = useState({});
   const [currentInputMap, setCurrentInputMap] = useState({});
 
   const [sortConfig, setSortConfig] = useState({ key: 'prodDt', direction: 'desc' });
@@ -93,14 +94,14 @@ export default function 생산관리() {
   const [warehouseInputMap, setWarehouseInputMap] = useState({});
 
   const products = useMemo(() => items.filter(i => i.itemFlag === '02'), [items]);
-  
+
   const materialList = useMemo(() => {
     if (!selectedProd) return [];
     return bomAgg.map(b => {
       const mrpData = mrp[b.sItemCd];
       const reqQty = safeNum(b.useQtySum) * safeNum(planForm.planQty || selectedProd.planQty);
       const avail = mrpData?.totals?.availQty || 0;
-      
+
       const manualAlloc = manualAllocations[b.sItemCd];
       const allocatedQty = manualAlloc ? manualAlloc.reduce((sum, a) => sum + a.qty, 0) : 0;
       const isAllocated = manualAlloc && allocatedQty === reqQty;
@@ -112,7 +113,7 @@ export default function 생산관리() {
         availQty: avail,
         shortQty: Math.max(0, reqQty - avail),
         isOk: avail >= reqQty,
-        isAllocated: isAllocated 
+        isAllocated: isAllocated
       };
     });
   }, [bomAgg, mrp, planForm.planQty, selectedProd, items, manualAllocations]);
@@ -232,7 +233,7 @@ export default function 생산관리() {
 
   const handleSelectProd = async (prod) => {
     if (prod.prodNo === selectedProd?.prodNo) return;
-    
+
     const foundItem = items.find(i => i.itemCd === prod.itemCd);
     const prodName = prod.itemNm || foundItem?.itemNm || '';
 
@@ -242,7 +243,7 @@ export default function 생산관리() {
       itemCd: prod.itemCd, itemNm: prodName,
       remark: prod.remark || ''
     });
-    
+
     setResultForm({ badQty: 0, badReason: '' });
     setWarehouseInputMap({});
     setManualAllocations({});
@@ -295,10 +296,10 @@ export default function 생산관리() {
   const saveProdToDb = async (nextStatus) => {
     const isNew = selectedProd.prodNo === 'TEMP';
     const payload = {
-        ...planForm, 
+        ...planForm,
         prodNo: isNew ? null : planForm.prodNo,
         planQty: Number(planForm.planQty),
-        status: nextStatus || selectedProd.status 
+        status: nextStatus || selectedProd.status
     };
     const url = isNew ? API.prods : `${API.prods}/${encodeURIComponent(selectedProd.prodNo)}`;
     const method = isNew ? "POST" : "PUT";
@@ -309,7 +310,7 @@ export default function 생산관리() {
             body: JSON.stringify(payload)
         });
         if(!res.ok) throw new Error(await res.text());
-        
+
         const saved = await res.json();
         const foundItem = items.find(i => i.itemCd === saved.itemCd);
         saved.itemNm = foundItem?.itemNm || saved.itemNm;
@@ -319,14 +320,14 @@ export default function 생산관리() {
               ? [saved, ...prev.filter(p => p.prodNo !== 'TEMP')]
               : prev.map(p => p.prodNo === saved.prodNo ? saved : p)
         );
-        
+
         // 목록 갱신 및 상태 업데이트
         await fetchProdList();
         const updated = saved;
         updated.itemNm = foundItem?.itemNm || updated.itemNm;
         setSelectedProd(updated);
         setPlanForm(prev => ({...prev, prodNo: saved.prodNo}));
-        
+
         return saved;
     } catch(e) {
         alert("저장 실패: " + e.message);
@@ -348,24 +349,24 @@ export default function 생산관리() {
             await saveProdToDb('01');
         } else if (current === '03') {
             // 03(예약) -> 02(MRP): 예약 취소 수행
-            if (window.confirm("이전 단계로 돌아가면 창고에 배정된 자재 예약이 취소됩니다.\n계속하시겠습니까?")) {
+            if (!window.confirm("이전 단계로 돌아가면 창고에 배정된 자재 예약이 취소됩니다.\n계속하시겠습니까?")) {
                 const res = await fetch(`${API.prods}/${encodeURIComponent(selectedProd.prodNo)}/unreserve`, {
                     method: "POST"
                 });
-                
+
                 if (!res.ok) {
                     const txt = await res.text();
                     throw new Error(txt);
                 }
-                
+
                 await fetchDetailLogs(selectedProd.prodNo);
                 await saveProdToDb('02');
-                
+
                 // 배정 상태 초기화
                 setManualAllocations({});
                 setCurrentInputMap({});
                 setSelectedMrpItem(null);
-                
+
                 alert("자재 예약이 취소되고 이전 단계로 이동했습니다.");
             }
         }
@@ -393,14 +394,30 @@ export default function 생산관리() {
         }
         else if (current === '03') {
             // 자재예약 -> 생산중 (여기서 예약 + 소모 처리)
-            
+            // 1️⃣ 입력만 하고 확정 안 한 경우
+              if (selectedMrpItem && Object.keys(currentInputMap).length > 0) {
+                if (!manualAllocations[selectedMrpItem.itemCd]) {
+                  return alert('수동 배정을 입력한 자재는 반드시 [배정 확정]을 눌러주세요.');
+                }
+              }
+
+              // 2️⃣ 수동배정 수량 검증
+              for (const m of materialList) {
+                const manual = manualAllocations[m.itemCd];
+                if (manual) {
+                  const sum = manual.reduce((a,b)=>a+b.qty,0);
+                  if (sum !== m.reqQty) {
+                    return alert(`자재 [${m.itemNm}] 배정 수량이 필요 수량과 다릅니다.`);
+                  }
+                }
+              }
             const allocations = [];
             Object.entries(manualAllocations).forEach(([itemCd, list]) => {
                 list.forEach(a => {
                     if (a.qty > 0) {
                         allocations.push({
                             itemCd: itemCd,
-                            whCd: normalizeWhCd(a.whCd), 
+                            whCd: normalizeWhCd(a.whCd),
                             qty: a.qty
                         });
                     }
@@ -419,11 +436,11 @@ export default function 생산관리() {
 
             if (!res.ok) {
                 const errorMsg = await res.text();
-                throw new Error(errorMsg); 
+                throw new Error(errorMsg);
             }
-            
+
             await fetchDetailLogs(selectedProd.prodNo);
-            
+
             // 2. 소모
             const res2 = await fetch(`${API.prods}/${encodeURIComponent(selectedProd.prodNo)}/consume`, {
                 method: "POST"
@@ -440,7 +457,7 @@ export default function 생산관리() {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     resultDt: planForm.prodDt,
-                    whCd: "TEMP", 
+                    whCd: "TEMP",
                     goodQty: goodQty,
                     badQty: Number(resultForm.badQty),
                     badRes: resultForm.badReason,
@@ -463,13 +480,13 @@ export default function 생산관리() {
                 body: JSON.stringify({ allocations: allocs, remark: "완제품입고" })
             });
             if(!res.ok) throw new Error(await res.text());
-            
+
             await saveProdToDb('07');
             await fetchDetailLogs(selectedProd.prodNo);
         }
-    } catch (e) { 
-        console.error(e); 
-        alert(e.message || "오류가 발생했습니다."); 
+    } catch (e) {
+        console.error(e);
+        alert(e.message || "오류가 발생했습니다.");
     }
   };
 
@@ -515,11 +532,11 @@ export default function 생산관리() {
       </div>
       <div className="form-row">
         <label>계획수량</label>
-        <input type="number" value={planForm.planQty} 
+        <input type="number" value={planForm.planQty}
                onChange={e => {
                    setPlanForm({...planForm, planQty: e.target.value});
                    if(planForm.itemCd) calcMrp(planForm.itemCd, e.target.value);
-               }} 
+               }}
                disabled={selectedProd.status !== '01'}/>
       </div>
       <div className="form-row">
@@ -538,10 +555,10 @@ export default function 생산관리() {
     if (selectedMrpItem) {
         Object.values(currentInputMap).forEach(qty => totalAlloc += qty);
     }
-    
+
     // ✅ [수정] 자재 예약('03') 단계에서만 배정 입력 가능
-    const isInputEnabled = selectedProd && selectedProd.status === '03';
-    
+    const isInputEnabled = selectedProd?.status === '03';
+
     let guideText = "";
     if (selectedProd.status === '02') guideText = "※ 현재는 MRP 확인 단계입니다. 배정은 [다음단계]에서 진행해주세요.";
     else if (selectedProd.status === '03') guideText = "※ 수동 배정을 하지 않은 자재는 [다음단계] 클릭 시 시스템이 자동으로 배정합니다.";
@@ -566,8 +583,9 @@ export default function 생산관리() {
               key={i}
               className={`excel-tr ${!m.isOk ? 'mrp-shortage' : 'mrp-complete'} ${selectedMrpItem?.itemCd === m.itemCd ? 'selected-row' : ''}`}
               onClick={() => {
+                if (selectedProd.status !== '03') return;
                 setSelectedMrpItem({...m});
-                
+
                 const saved = manualAllocations[m.itemCd] || [];
                 const initInput = {};
                 saved.forEach(s => {
@@ -590,7 +608,7 @@ export default function 생산관리() {
           ))}
         </tbody>
       </table>
-      
+
       {selectedMrpItem && (
         <div className="form-section" style={{marginTop:'10px', borderTop:'1px dashed #ccc', paddingTop:'10px'}}>
           <div className="section-title">
@@ -611,13 +629,13 @@ export default function 생산관리() {
               {materialWhs
                 .filter(w => w.whType === "01" || w.whType === "03")
                 .map((w) => {
-                  const normWhCd = normalizeWhCd(w.whCd); 
+                  const normWhCd = normalizeWhCd(w.whCd);
                   const stock = warehouseStockMap[normWhCd] || {
                     stockQty: 0,
                     allocQty: 0,
                     availQty: 0
                   };
-                  
+
                   return (
                     <tr key={w.whCd} className="excel-tr">
                       <td className="excel-td">{w.whNm}</td>
@@ -625,7 +643,7 @@ export default function 생산관리() {
                       <td className="excel-td">{stock.allocQty}</td>
                       <td className="excel-td" style={{fontWeight:'bold', color:'#3b82f6'}}>{stock.availQty}</td>
                       <td className="excel-td">
-                         <input 
+                         <input
                             type="number"
                             min="0"
                             max={stock.availQty}
@@ -652,11 +670,17 @@ export default function 생산관리() {
                 })}
             </tbody>
           </table>
-          
+
           <div className="warehouse-action-bar" style={{justifyContent:'flex-end', marginTop:'10px'}}>
-              <span style={{marginRight:'10px', fontSize:'14px'}}>
-                  필요: <b>{selectedMrpItem.reqQty}</b> / 배정: <b style={{color: totalAlloc === selectedMrpItem.reqQty ? 'green' : 'red'}}>{totalAlloc}</b>
-              </span>
+              {selectedProd?.status !== '02' && (
+                <span style={{marginRight:'10px', fontSize:'14px'}}>
+                  필요: <b>{selectedMrpItem.reqQty}</b> / 배정:{' '}
+                  <b style={{color: totalAlloc === selectedMrpItem.reqQty ? 'green' : 'red'}}>
+                    {totalAlloc}
+                  </b>
+                </span>
+              )}
+
               {/* ✅ 03 단계일 때만 버튼 표시 */}
               {isInputEnabled && (
                   <button className="excel-btn" onClick={() => {
@@ -664,16 +688,16 @@ export default function 생산관리() {
                           alert(`배정 수량 합계(${totalAlloc})가 필요 수량(${selectedMrpItem.reqQty})과 일치해야 합니다.`);
                           return;
                       }
-                      
+
                       const allocList = Object.entries(currentInputMap)
                         .filter(([_, qty]) => qty > 0)
                         .map(([whCd, qty]) => ({ whCd, qty }));
-                        
+
                       setManualAllocations(prev => ({
                           ...prev,
                           [selectedMrpItem.itemCd]: allocList
                       }));
-                      
+
                       alert(`${selectedMrpItem.itemNm} 수동 배정이 완료되었습니다.`);
                   }}>
                       배정 확정
@@ -695,7 +719,17 @@ export default function 생산관리() {
           <div className="section-title">📦 생산 실적 등록</div>
           <div className="form-row">
               <label>불량 수량</label>
-              <input type="number" value={resultForm.badQty} onChange={e => setResultForm({...resultForm, badQty: Number(e.target.value)})} />
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={resultForm.badQty}
+                onChange={e => {
+                  const v = Math.floor(Number(e.target.value) || 0);
+                  setResultForm({...resultForm, badQty: v});
+                }}
+              />
+
           </div>
           <div className="form-row">
               <label>불량 사유</label>
@@ -721,7 +755,7 @@ export default function 생산관리() {
                 <label>배정 합계</label>
                 <input value={assigned} readOnly style={{color: assigned===goodQty ? 'green' : 'red'}} />
             </div>
-            
+
             <table className="excel-table mt-12">
                 <thead><tr><th className="excel-th">창고</th><th className="excel-th">배정수량</th></tr></thead>
                 <tbody>
@@ -746,7 +780,7 @@ export default function 생산관리() {
           <div className="section-title">✅ 공정 완료 정보</div>
           <div className="form-row"><label>상태</label><span>최종 완료</span></div>
           <div className="form-row"><label>입고일</label><span>{new Date().toLocaleDateString()}</span></div>
-          
+
           <div className="section-title mt-16">📜 공정 로그</div>
           <table className="excel-table">
               <thead>
@@ -775,17 +809,86 @@ export default function 생산관리() {
           </table>
       </div>
   );
+  const renderCancelPanel = () => (
+    <div className="form-section">
+      <div className="section-title">⛔ 취소 정보</div>
+
+      <div className="form-row">
+        <label>상태</label>
+        <span style={{color:'#dc2626', fontWeight:'bold'}}>취소됨</span>
+      </div>
+
+      <div className="form-row">
+        <label>취소일</label>
+        <span>
+          {selectedProd?.updDt
+            ? selectedProd.updDt.substring(0, 10)
+            : '-'}
+        </span>
+      </div>
+
+      <div className="form-row">
+        <label>비고</label>
+        <span>{selectedProd?.remark || '-'}</span>
+      </div>
+
+      <div className="section-title mt-16">📜 공정 로그</div>
+      <table className="excel-table">
+        <thead>
+          <tr>
+            <th className="excel-th" style={{width:'90px'}}>날짜</th>
+            <th className="excel-th" style={{width:'70px'}}>구분</th>
+            <th className="excel-th">품목</th>
+            <th className="excel-th">창고</th>
+            <th className="excel-th" style={{width:'60px'}}>수량</th>
+          </tr>
+        </thead>
+        <tbody>
+          {detailLogs.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="excel-td" style={{textAlign:'center', color:'#999'}}>
+                로그 정보가 없습니다.
+              </td>
+            </tr>
+          ) : (
+            detailLogs.map((l, i) => {
+              const whInfo =
+                l.toWh?.whNm ||
+                l.toWh?.whCd ||
+                l.fromWh?.whNm ||
+                l.fromWh?.whCd ||
+                '-';
+
+              return (
+                <tr key={i} className="excel-tr">
+                  <td className="excel-td">{l.ioDt ? l.ioDt.substring(0, 10) : '-'}</td>
+                  <td className="excel-td">{getLogTypeLabel(l.ioType)}</td>
+                  <td className="excel-td">{l.itemMst?.itemNm || '-'}</td>
+                  <td className="excel-td">{whInfo}</td>
+                  <td className="excel-td">{l.qty ?? '-'}</td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
 
   const renderContent = () => {
       if (!selectedProd) return <div className="empty-view">계획을 선택해주세요</div>;
       switch(selectedProd.status) {
           case '01': return renderPlanPanel();
           case '02': return <>{renderPlanPanel()}{renderMRPPanel()}</>;
-          case '03': return <>{renderPlanPanel()}{renderMRPPanel()}</>; 
-          case '04': return <>{renderPlanPanel()}{renderMRPPanel()}</>; 
+          case '03': return <>{renderPlanPanel()}{renderMRPPanel()}</>;
+          case '04': return <>{renderPlanPanel()}{renderMRPPanel()}</>;
           case '05': return renderResultPanel();
           case '06': return renderWarehousePanel();
           case '07': return renderCompletePanel();
+          case '08':
+          case '09': return renderCancelPanel();
+
           default: return <div className="empty-view">취소된 계획입니다.</div>;
       }
   };
@@ -814,50 +917,68 @@ export default function 생산관리() {
               </div>
             </div>
 
-            {/* 필터 영역 */}
             <div className={`filter-slide ${isFilterOpen ? 'open' : ''}`}>
               <div className="advanced-filter-panel">
                 <div className="filter-row">
-                    <div className="filter-field filter-top">
-                        <label className="filter-label">기간</label>
-                        <div className="date-range-filter">
-                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                            <span className="date-separator">~</span>
-                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                        </div>
+                  <div className="filter-field filter-top">
+                    <label className="filter-label">기간</label>
+                    <div className="date-range-filter">
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                      <span className="date-separator">~</span>
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                     </div>
-                    <div className="filter-field filter-top">
-                        <label className="filter-label">검색</label>
-                        <SearchBar
-                            searchOptions={[
-                              { value: 'prodNo', label: '생산번호' },
-                              { value: 'itemNm', label: '제품명' }
-                            ]}
-                            searchType={searchType}
-                            onSearchTypeChange={setSearchType}
-                            searchTerm={searchTerm}
-                            onSearchTermChange={setSearchTerm}
-                        />
+                  </div>
+
+                  <div className="filter-field filter-top">
+                    <label className="filter-label">검색</label>
+                    <SearchBar
+                      searchOptions={[
+                        { value: 'prodNo', label: '생산번호' },
+                        { value: 'itemNm', label: '제품명' }
+                      ]}
+                      searchType={searchType}
+                      onSearchTypeChange={setSearchType}
+                      searchTerm={searchTerm}
+                      onSearchTermChange={setSearchTerm}
+                    />
+                  </div>
+
+                  <div className="filter-field filter-bottom">
+                    <label className="filter-label">상태</label>
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                      <option value="ALL">전체</option>
+                      {STATE_STEPS.map(s => (
+                        <option key={s.code} value={s.code}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="filter-field filter-bottom">
+                    <label className="filter-label">취소 포함</label>
+                    <div className="checkbox-row">
+                       <input type="checkbox" checked={includeCanceled} onChange={e => setIncludeCanceled(e.target.checked)} />
                     </div>
-                    <div className="filter-field filter-bottom">
-                        <label className="filter-label">상태</label>
-                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                            <option value="ALL">전체</option>
-                            {STATE_STEPS.map(s => <option key={s.code} value={s.code}>{s.label}</option>)}
-                        </select>
-                    </div>
-                    <div className="filter-field filter-bottom">
-                         <label className="filter-label">취소 포함</label>
-                         <div className="checkbox-row">
-                             <input type="checkbox" checked={includeCanceled} onChange={e => setIncludeCanceled(e.target.checked)} />
-                         </div>
-                    </div>
-                    <div className="filter-actions filter-bottom">
-                        <button className="excel-btn excel-btn-new" onClick={()=>setAppliedSearchTerm(searchTerm)}>검색</button>
-                        <button className="excel-btn excel-btn-new" onClick={()=>{
-                            setStartDate(''); setEndDate(''); setSearchTerm(''); setAppliedSearchTerm(''); setStatusFilter('ALL'); setIncludeCanceled(false);
-                        }}>초기화</button>
-                    </div>
+                  </div>
+
+                  <div className="filter-actions filter-bottom">
+                    <button className="excel-btn excel-btn-new" onClick={() => setAppliedSearchTerm(searchTerm)}>
+                      검색
+                    </button>
+                    <button
+                      className="excel-btn excel-btn-new"
+                      onClick={() => {
+                        setStartDate('')
+                        setEndDate('')
+                        setSearchTerm('')
+                        setAppliedSearchTerm('')
+                        setStatusFilter('ALL')
+                        setIncludeCanceled(true)
+                      }}
+                    >
+                      초기화
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -902,17 +1023,29 @@ export default function 생산관리() {
               <div className="detail-header">
                 <h3 className="detail-title">{selectedProd.prodNo} - {selectedProd.itemNm}</h3>
               </div>
-              
               <div className="detail-meta-bar">
                 <div className="state-progress">
-                    {STATE_STEPS.map(s => (
-                        <span key={s.code} className={`state-step ${s.code === selectedProd.status ? 'active' : ''} ${s.code < selectedProd.status ? 'done' : ''}`}>
-                            {s.label}
-                        </span>
-                    ))}
+                  {STATE_STEPS.map(s => (
+                    <span
+                      key={s.code}
+                      className={`state-step
+                        ${s.code === selectedProd.status ? 'active' : ''}
+                        ${s.code < selectedProd.status ? 'done' : ''}
+                        ${(s.code === '08' || s.code === '09') && selectedProd.status === s.code ? 'state-cancel' : ''}
+                      `}
+                    >
+                      {s.label}
+                    </span>
+                  ))}
                 </div>
+
                 <div className="meta-section">
-                    <button className="excel-btn" onClick={()=>saveProdToDb()}>저장</button>
+                    {!['07', '08', '09'].includes(selectedProd.status) && (
+                      <button className="excel-btn" onClick={() => saveProdToDb()}>
+                        저장
+                      </button>
+                    )}
+
                     {/* ✅ 이전 단계 버튼 */}
                     {(selectedProd.status === '02' || selectedProd.status === '03') && (
                         <button className="excel-btn excel-btn-default" style={{marginRight:'5px'}} onClick={handlePrev}>&lt; 이전단계</button>
